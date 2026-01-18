@@ -1,0 +1,24 @@
+# Local Netlify folder
+.netlify
+
+# Environment files
+.env
+.env.local
+.env*.local
+
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Claude local config
+.claude
+
+# OS files
+.DS_Store
+Thumbs.db
+nul
+
+# Zip files
+*.zip

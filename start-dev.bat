@@ -1,0 +1,3 @@
+@echo off
+echo Starting IcePick Dev Server with Netlify Functions...
+netlify dev

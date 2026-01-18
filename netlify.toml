@@ -1,0 +1,28 @@
+[build]
+  command = "npm run build"
+  publish = "src/dist"
+  functions = "netlify/functions"
+
+[dev]
+  command = "npm run dev"
+  targetPort = 3000
+  port = 8888
+  autoLaunch = false
+  framework = "#custom"
+  base = "src"
+
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Environment variables (set these in Netlify dashboard)
+# VITE_SUPABASE_URL
+# VITE_SUPABASE_ANON_KEY
+# GEMINI_API_KEY (server-side only, for functions)
