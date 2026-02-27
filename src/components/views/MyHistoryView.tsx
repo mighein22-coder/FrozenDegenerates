@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Week, Pick, Game } from '../../types';
 
 interface MyHistoryViewProps {
@@ -23,6 +23,99 @@ const formatWeekDate = (week: Week) =>
     day: 'numeric',
     timeZone: 'UTC',
   });
+
+// ─── Mobile accordion cards ──────────────────────────────────────────────────
+
+type WeekRow = {
+  week: Week;
+  myPicks: Pick[];
+  games: Game[];
+  weekWins: number;
+  weekLosses: number;
+  weekScore: number;
+};
+
+const MobileHistoryCards: React.FC<{ weekRows: WeekRow[] }> = ({ weekRows }) => {
+  const [openWeeks, setOpenWeeks] = useState<Set<string>>(new Set());
+
+  const toggle = (weekId: string) =>
+    setOpenWeeks(prev => {
+      const next = new Set(prev);
+      next.has(weekId) ? next.delete(weekId) : next.add(weekId);
+      return next;
+    });
+
+  return (
+    <div className="md:hidden space-y-2">
+      {weekRows.map(({ week, myPicks, games, weekWins, weekLosses, weekScore }) => {
+        if (myPicks.length === 0) return null;
+        const isOpen = openWeeks.has(week.id);
+
+        return (
+          <div key={week.id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            {/* Card header — tap to expand */}
+            <button
+              className="w-full flex items-center gap-3 p-3 text-left"
+              onClick={() => toggle(week.id)}
+            >
+              <div className="flex-1 min-w-0">
+                <span className="font-medium text-slate-200 text-sm">
+                  Wk {week.number} — {formatWeekDate(week)}
+                </span>
+              </div>
+              <span className="inline-block px-2 py-0.5 bg-slate-800 rounded text-xs font-display font-bold text-white shrink-0">
+                +{weekScore}
+              </span>
+              <span className="text-xs shrink-0">
+                <span className="text-green-400 font-bold">{weekWins}</span>
+                <span className="text-slate-600 mx-0.5">-</span>
+                <span className="text-red-400 font-bold">{weekLosses}</span>
+              </span>
+              <span className="text-slate-500 text-xs shrink-0">{isOpen ? '▲' : '▼'}</span>
+            </button>
+
+            {/* Expanded pick list */}
+            {isOpen && (
+              <div className="border-t border-slate-800 divide-y divide-slate-800">
+                {myPicks.map(pick => {
+                  const game = games.find(g => g.id === pick.gameId);
+                  const opponent = game
+                    ? pick.selectedTeamId === game.homeTeamId
+                      ? game.awayTeamId
+                      : game.homeTeamId
+                    : null;
+                  const resultClass = getResultClass(pick.result);
+
+                  return (
+                    <div key={pick.gameId} className="flex items-center gap-3 px-3 py-2">
+                      <img
+                        src={getLogoUrl(pick.selectedTeamId)}
+                        alt={pick.selectedTeamId}
+                        className="w-7 h-7 object-contain shrink-0"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      <span className={`text-sm font-bold flex-1 ${resultClass}`}>
+                        {pick.selectedTeamId}
+                        {opponent && (
+                          <span className="text-[10px] text-slate-600 font-normal ml-1">vs {opponent}</span>
+                        )}
+                      </span>
+                      <span className="text-xs bg-slate-800 px-1.5 py-0.5 rounded text-slate-500 border border-slate-700 shrink-0">
+                        {pick.confidence} pts
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── Main view ───────────────────────────────────────────────────────────────
 
 /**
  * My History view — personal pick history across all completed/locked weeks
@@ -148,8 +241,11 @@ export const MyHistoryView: React.FC<MyHistoryViewProps> = ({
         </div>
       </div>
 
-      {/* Picks history table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      {/* Mobile accordion cards */}
+      <MobileHistoryCards weekRows={weekRows} />
+
+      {/* Desktop table */}
+      <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>

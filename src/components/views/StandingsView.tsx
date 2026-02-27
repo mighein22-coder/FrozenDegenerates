@@ -16,7 +16,56 @@ export const StandingsView: React.FC<StandingsViewProps> = ({ standings, current
       <p className="text-slate-400">Official Leaderboard</p>
     </header>
 
-    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+    {/* Mobile card list */}
+    <div className="md:hidden space-y-2">
+      {standings.map((row) => {
+        const isCurrentUser = row.userId === currentUser?.id;
+        return (
+          <div
+            key={row.userId}
+            className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+              isCurrentUser
+                ? 'bg-ice-900/10 border-ice-800'
+                : 'bg-slate-900 border-slate-800'
+            }`}
+          >
+            {/* Rank badge */}
+            <span
+              className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-display font-bold shrink-0 ${
+                row.rank === 1
+                  ? 'bg-yellow-500/20 text-yellow-500'
+                  : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              {row.rank}
+            </span>
+
+            {/* Name + W-L */}
+            <div className="flex-1 min-w-0">
+              <div className={`font-medium truncate ${isCurrentUser ? 'text-ice-400' : 'text-slate-200'}`}>
+                {row.name}
+              </div>
+              <div className="text-xs text-slate-500">
+                {row.wins}W – {row.losses}L
+              </div>
+            </div>
+
+            {/* Weekly + Total */}
+            <div className="text-right shrink-0">
+              <div className="font-display font-bold text-white">{row.totalPoints}</div>
+              <div className="text-xs">
+                <span className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-400">
+                  +{row.weeklyScore}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    {/* Desktop table */}
+    <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>

@@ -123,11 +123,12 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
         </div>
       ) : (
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+          <p className="md:hidden text-center text-xs text-slate-600 py-1 border-b border-slate-800">← Scroll →</p>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-slate-950 p-4 border-b border-r border-slate-800 min-w-[200px] text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="sticky left-0 z-10 bg-slate-950 p-2 md:p-4 border-b border-r border-slate-800 min-w-[90px] md:min-w-[120px] text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Player
                   </th>
                   {weekGames
@@ -135,7 +136,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                     .map(game => (
                       <th
                         key={game.id}
-                        className="p-2 border-b border-slate-800 text-center min-w-[120px] bg-slate-900/50"
+                        className="p-2 border-b border-slate-800 text-center min-w-[80px] md:min-w-[120px] bg-slate-900/50"
                       >
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-[10px] text-slate-500">
@@ -155,13 +156,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
               <tbody className="divide-y divide-slate-800">
                 {leagueUsers.map(user => (
                   <tr key={user.id} className="hover:bg-slate-800/30">
-                    <td className="sticky left-0 z-10 bg-slate-900 p-4 border-r border-slate-800 font-medium text-slate-200 flex items-center gap-3">
+                    <td className="sticky left-0 z-10 bg-slate-900 p-2 md:p-4 border-r border-slate-800 font-medium text-slate-200 flex items-center gap-3">
                       {user.avatar && <img src={user.avatar} className="w-6 h-6 rounded-full" alt="" />}
                       {user.name}
                     </td>
                     {weekGames.map(game => {
                       const pick = leaguePicks.find(p => p.userId === user.id && p.gameId === game.id);
-                      let cellClass = 'p-3 text-center border-l border-slate-800/50';
+                      let cellClass = 'p-2 md:p-3 text-center border-l border-slate-800/50';
                       let textClass = 'font-bold text-slate-400';
 
                       if (pick && game.status === 'FINAL') {

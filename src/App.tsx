@@ -420,7 +420,7 @@ function App() {
     <div className="min-h-screen bg-slate-950 flex text-slate-200 font-sans selection:bg-ice-500/30">
       <Sidebar currentView={view} onNavigate={setView} onLogout={handleLogout} />
 
-      <main className="flex-1 ml-20 lg:ml-64 p-4 lg:p-10 max-w-7xl mx-auto w-full">
+      <main className="flex-1 md:ml-20 lg:ml-64 p-4 lg:p-10 pb-24 md:pb-4 lg:pb-10 max-w-7xl mx-auto w-full">
         {view === 'DASHBOARD' && (
           <DashboardView
             user={profile}
