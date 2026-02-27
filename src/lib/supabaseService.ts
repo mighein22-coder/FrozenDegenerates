@@ -69,10 +69,21 @@ export const supabaseService = {
 
   /**
    * Save games to database (admin function)
+   * Guards against duplicate inserts by checking if games already exist for the week
    */
   async saveGames(weekId: string, games: Partial<Game>[]): Promise<void> {
-    // Games don't include 'id' - Supabase will auto-generate UUIDs
-    // Use insert since we're creating new games (App.tsx checks if games exist first)
+    // Check if games already exist for this week to prevent duplicate inserts
+    const { data: existing } = await supabase
+      .from('games')
+      .select('id')
+      .eq('week_id', weekId)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      // Games already saved for this week, skip insert
+      return;
+    }
+
     const { error } = await supabase
       .from('games')
       .insert(games);
@@ -188,8 +199,9 @@ export const supabaseService = {
 
   /**
    * Calculate and get current standings
+   * @param currentWeekId - Optional week ID to calculate weekly score for
    */
-  async getStandings(): Promise<StandingsRow[]> {
+  async getStandings(currentWeekId?: string): Promise<StandingsRow[]> {
     // Get all profiles
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
@@ -205,12 +217,28 @@ export const supabaseService = {
 
     if (picksError) throw new Error(`Failed to get picks: ${picksError.message}`);
 
+    // Determine the week to use for weekly score:
+    // Use the provided currentWeekId, or fall back to the most recent week that has any resolved picks
+    let weeklyScoreWeekId = currentWeekId;
+    if (!weeklyScoreWeekId && picks && picks.length > 0) {
+      const resolvedPicks = picks.filter(p => p.result !== 'PENDING');
+      if (resolvedPicks.length > 0) {
+        // Find the most recent week_id among resolved picks
+        const weekIds = [...new Set(resolvedPicks.map(p => p.week_id))];
+        weeklyScoreWeekId = weekIds.sort().reverse()[0];
+      }
+    }
+
     // Calculate standings for each user
     const standings = profiles.map((profile: Profile) => {
       const userPicks = picks?.filter(p => p.user_id === profile.id) || [];
       const wins = userPicks.filter(p => p.result === 'WIN').length;
       const losses = userPicks.filter(p => p.result === 'LOSS').length;
       const totalPoints = userPicks.reduce((sum, p) => sum + p.points_earned, 0);
+      const weeklyPicks = weeklyScoreWeekId
+        ? userPicks.filter(p => p.week_id === weeklyScoreWeekId)
+        : [];
+      const weeklyScore = weeklyPicks.reduce((sum, p) => sum + p.points_earned, 0);
 
       return {
         userId: profile.id,
@@ -219,6 +247,7 @@ export const supabaseService = {
         wins,
         losses,
         totalPoints,
+        weeklyScore,
         rank: 0 // Will be set after sorting
       };
     });

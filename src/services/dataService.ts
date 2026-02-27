@@ -137,7 +137,7 @@ export const dataService = {
 
       return {
         userId: user.id,
-        userName: user.name,
+        name: user.name,
         avatar: user.avatar,
         totalPoints,
         wins,

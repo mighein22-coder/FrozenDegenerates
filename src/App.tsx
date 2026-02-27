@@ -14,8 +14,9 @@ import { PicksView } from './components/views/PicksView';
 import { StandingsView } from './components/views/StandingsView';
 import { ResultsView } from './components/views/ResultsView';
 import { TeamStatsView } from './components/views/TeamStatsView';
+import { MyHistoryView } from './components/views/MyHistoryView';
 
-type ViewState = 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS';
+type ViewState = 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY';
 
 function App() {
   // Authentication
@@ -51,8 +52,8 @@ function App() {
         const week = await supabaseService.getCurrentWeek();
         setCurrentWeek(week);
 
-        // Load standings
-        const standingsData = await supabaseService.getStandings();
+        // Load standings (pass current week ID for weekly score calculation)
+        const standingsData = await supabaseService.getStandings(week.id);
         setStandings(standingsData);
 
         // Load all profiles
@@ -191,7 +192,7 @@ function App() {
         setResultsWeekPicks(picks);
 
         // Refresh standings after score sync
-        const standingsData = await supabaseService.getStandings();
+        const standingsData = await supabaseService.getStandings(selectedResultsWeekId);
         setStandings(standingsData);
       } catch (error) {
         console.error('Error loading results data:', error);
@@ -204,6 +205,10 @@ function App() {
 
   // Load picks from completed weeks only for team stats view
   const [teamStatsPicks, setTeamStatsPicks] = useState<Pick[]>([]);
+
+  // My History view state — picks and games keyed by weekId
+  const [myHistoryPicks, setMyHistoryPicks] = useState<Record<string, Pick[]>>({});
+  const [myHistoryGames, setMyHistoryGames] = useState<Record<string, Game[]>>({});
 
   useEffect(() => {
     if (view !== 'TEAM_STATS') return;
@@ -228,6 +233,33 @@ function App() {
 
     loadCompletedWeeksPicks();
   }, [view, allWeeks]);
+
+  // Load picks and games for all locked/completed weeks for My History view
+  useEffect(() => {
+    if (view !== 'MY_HISTORY' || !user) return;
+
+    const loadMyHistory = async () => {
+      try {
+        const relevantWeeks = allWeeks.filter(
+          w => w.status === 'LOCKED' || w.status === 'COMPLETED'
+        );
+        const picksMap: Record<string, Pick[]> = {};
+        const gamesMap: Record<string, Game[]> = {};
+
+        for (const week of relevantWeeks) {
+          picksMap[week.id] = await supabaseService.getAllPicks(week.id);
+          gamesMap[week.id] = await supabaseService.getGamesByWeek(week.id);
+        }
+
+        setMyHistoryPicks(picksMap);
+        setMyHistoryGames(gamesMap);
+      } catch (error) {
+        console.error('Error loading my history:', error);
+      }
+    };
+
+    loadMyHistory();
+  }, [view, allWeeks, user]);
 
   // Handlers
   const handleSelectTeam = (gameId: string, teamId: string) => {
@@ -295,7 +327,7 @@ function App() {
       const picks = await supabaseService.getUserPicks(user.id, currentWeek.id);
       setCurrentPicks(picks);
 
-      const standingsData = await supabaseService.getStandings();
+      const standingsData = await supabaseService.getStandings(currentWeek?.id);
       setStandings(standingsData);
 
       // Reset status after 2 seconds
@@ -318,6 +350,8 @@ function App() {
       setResultsWeekGames([]);
       setResultsWeekPicks([]);
       setTeamStatsPicks([]);
+      setMyHistoryPicks({});
+      setMyHistoryGames({});
       setStandings([]);
     } catch (error) {
       console.error('Logout error:', error);
@@ -451,6 +485,17 @@ function App() {
               role: p.role
             }))}
             allPicks={teamStatsPicks}
+          />
+        )}
+
+        {view === 'MY_HISTORY' && user && (
+          <MyHistoryView
+            currentUserId={user.id}
+            relevantWeeks={allWeeks.filter(
+              w => w.status === 'LOCKED' || w.status === 'COMPLETED'
+            )}
+            picksByWeek={myHistoryPicks}
+            gamesByWeek={myHistoryGames}
           />
         )}
       </main>

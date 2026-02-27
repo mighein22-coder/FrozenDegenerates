@@ -46,7 +46,7 @@ export interface Week {
 
 export interface StandingsRow {
   userId: string;
-  userName: string;
+  name: string;
   avatar: string;
   totalPoints: number;
   wins: number;

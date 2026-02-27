@@ -246,8 +246,8 @@ This preserves the original prototype while giving us a clean workspace.
 - [x] Login/logout works
 - [x] Picks save to Supabase (DELETE policy added, submit working)
 - [x] Deadline locks at Saturday 11 AM ET (timezone fix applied)
-- [ ] Standings calculate correctly
-- [ ] Results matrix shows all picks
+- [x] Standings calculate correctly
+- [x] Results matrix shows all picks
 - [x] Schedule sync works (NHL API via Netlify function)
 - [ ] Mobile responsive
 - [x] RLS prevents unauthorized edits (DELETE policy added 2026-01-16)

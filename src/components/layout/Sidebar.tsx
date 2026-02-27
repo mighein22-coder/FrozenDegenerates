@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Calendar, Trophy, LogOut, Grid3X3, Heart } from 'lucide-react';
+import { LayoutDashboard, Calendar, Trophy, LogOut, Grid3X3, Heart, ClipboardList } from 'lucide-react';
 
-type ViewState = 'LOGIN' | 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS';
+type ViewState = 'LOGIN' | 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -19,6 +19,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLog
     { id: 'RESULTS' as ViewState, icon: Grid3X3, label: 'League Matrix' },
     { id: 'TEAM_STATS' as ViewState, icon: Heart, label: 'Team Affinity' },
     { id: 'STANDINGS' as ViewState, icon: Trophy, label: 'Standings' },
+    { id: 'MY_HISTORY' as ViewState, icon: ClipboardList, label: 'My History' },
   ];
 
   return (
