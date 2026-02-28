@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@google/genai": "^1.33.0",
     "@netlify/functions": "^2.0.0"
-  },
-  "description": "Note: @google/genai is kept only for gemini-analyze function (matchup analysis). Schedule fetching now uses direct NHL API."
+  }
 }
