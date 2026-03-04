@@ -42,12 +42,4 @@ export const TEAMS: Record<string, Team> = {
   SEA: { id: 'SEA', name: 'Kraken', abbreviation: 'SEA', city: 'Seattle', logoColor: '#99D9D9' },
 };
 
-// Seed Data for Demo
-export const MOCK_USERS = [
-  { id: 'user-1', name: 'Demo User', email: 'user@example.com', avatar: 'https://picsum.photos/seed/user1/100/100', role: 'member' },
-  { id: 'user-2', name: 'Wayne G.', email: 'wayne@nhl.com', avatar: 'https://picsum.photos/seed/user2/100/100', role: 'member' },
-  { id: 'user-3', name: 'Connor M.', email: 'connor@nhl.com', avatar: 'https://picsum.photos/seed/user3/100/100', role: 'member' },
-  { id: 'user-4', name: 'Sidney C.', email: 'sid@nhl.com', avatar: 'https://picsum.photos/seed/user4/100/100', role: 'member' },
-];
-
 export const CURRENT_WEEK_ID = 'week-5';

@@ -89,7 +89,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             </Button>
 
             <div className="text-center text-xs text-slate-500 mt-4">
-              Demo: Use password <code className="text-ice-400">demo1234</code>
+              Need access? Contact the pool admin.
             </div>
           </form>
         </div>
