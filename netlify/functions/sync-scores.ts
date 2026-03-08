@@ -42,8 +42,8 @@ const handler: Handler = async (event: HandlerEvent) => {
     // Filter games by converting UTC time to ET timezone before comparing dates
     const filteredGames = allGames.filter((g: any) => {
       const gameTimeUTC = new Date(g.startTimeUTC);
-      const gameTimeET = new Date(gameTimeUTC.getTime() - (5 * 60 * 60 * 1000));
-      const gameDateET = gameTimeET.toISOString().split('T')[0];
+      // Use Intl to get the ET date, DST-aware (handles both EST UTC-5 and EDT UTC-4)
+      const gameDateET = gameTimeUTC.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
       return gameDateET === dateStr;
     });
 

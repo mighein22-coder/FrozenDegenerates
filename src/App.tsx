@@ -52,6 +52,12 @@ function App() {
         const week = await supabaseService.getCurrentWeek();
         setCurrentWeek(week);
 
+        // Sync scores on login if the week deadline has passed — ensures standings
+        // are always up-to-date without requiring a visit to the Results view
+        if (arePicksLocked(week.saturday_date)) {
+          await supabaseService.syncScores(week.id);
+        }
+
         // Load standings (pass current week ID for weekly score calculation)
         const standingsData = await supabaseService.getStandings(week.id);
         setStandings(standingsData);
@@ -371,7 +377,7 @@ function App() {
       // Always show completed weeks
       if (week.status === 'COMPLETED') return true;
 
-      // For open/locked weeks, only show if past deadline (Saturday 11 AM ET)
+      // For open/locked weeks, only show if past deadline (Saturday 10 AM ET)
       if (week.status === 'OPEN' || week.status === 'LOCKED') {
         return arePicksLocked(week.startDate);
       }
