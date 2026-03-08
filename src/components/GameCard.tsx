@@ -14,19 +14,21 @@ interface GameCardProps {
   onSelectTeam: (gameId: string, teamId: string) => void;
   onSetConfidence: (gameId: string, confidence: number) => void;
   disabled?: boolean;
+  teamRecords?: Record<string, string>;
 }
 
-export const GameCard: React.FC<GameCardProps> = ({ 
-  game, 
-  isSelected, 
-  selectedTeamId, 
+export const GameCard: React.FC<GameCardProps> = ({
+  game,
+  isSelected,
+  selectedTeamId,
   confidence,
   usedConfidences,
   pickResult,
   pointsEarned,
-  onSelectTeam, 
+  onSelectTeam,
   onSetConfidence,
-  disabled = false 
+  disabled = false,
+  teamRecords = {}
 }) => {
   const home = TEAMS[game.homeTeamId];
   const away = TEAMS[game.awayTeamId];
@@ -97,6 +99,9 @@ export const GameCard: React.FC<GameCardProps> = ({
           <div className="text-center leading-none">
              <span className="block font-bold text-slate-200 text-sm">{away.abbreviation}</span>
              <span className="block text-[10px] text-slate-500 mt-0.5">{away.name}</span>
+             {teamRecords[away.abbreviation] && (
+               <span className="block text-[10px] text-slate-500 mt-0.5">{teamRecords[away.abbreviation]}</span>
+             )}
           </div>
           {selectedTeamId === away.id && (
              <div className="absolute top-1 right-1">
@@ -119,6 +124,9 @@ export const GameCard: React.FC<GameCardProps> = ({
            <div className="text-center leading-none">
             <span className="block font-bold text-slate-200 text-sm">{home.abbreviation}</span>
             <span className="block text-[10px] text-slate-500 mt-0.5">{home.name}</span>
+            {teamRecords[home.abbreviation] && (
+              <span className="block text-[10px] text-slate-500 mt-0.5">{teamRecords[home.abbreviation]}</span>
+            )}
           </div>
           {selectedTeamId === home.id && (
              <div className="absolute top-1 right-1">

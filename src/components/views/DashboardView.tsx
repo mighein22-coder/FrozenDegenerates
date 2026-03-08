@@ -2,7 +2,6 @@ import React from 'react';
 import type { Profile } from '../../lib/supabase';
 import type { StandingsRow, Pick } from '../../types';
 import { Button } from '../Button';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DashboardViewProps {
   user: Profile | null;
@@ -21,15 +20,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate
 }) => {
   const userStats = standings.find(s => s.userId === user?.id);
-
-  // Mock chart data - in production, this would come from historical picks
-  const mockChartData = [
-    { name: 'Wk 1', score: 12 },
-    { name: 'Wk 2', score: 8 },
-    { name: 'Wk 3', score: 15 },
-    { name: 'Wk 4', score: 10 },
-    { name: 'Wk 5', score: userStats?.totalPoints ? Math.min(userStats.totalPoints % 15, 15) : 0 },
-  ];
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
@@ -72,40 +62,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="text-slate-600 text-2xl">/5</span>
           </div>
         </div>
-      </div>
-
-      {/* Performance Chart */}
-      <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl h-80">
-        <h3 className="text-lg font-bold text-white mb-4">Performance History</h3>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={mockChartData}>
-            <XAxis
-              dataKey="name"
-              stroke="#64748b"
-              tick={{ fill: '#64748b' }}
-            />
-            <YAxis
-              stroke="#64748b"
-              tick={{ fill: '#64748b' }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#0f172a',
-                borderColor: '#1e293b',
-                color: '#f8fafc'
-              }}
-              itemStyle={{ color: '#38bdf8' }}
-            />
-            <Line
-              type="monotone"
-              dataKey="score"
-              stroke="#38bdf8"
-              strokeWidth={3}
-              dot={{ fill: '#38bdf8', strokeWidth: 2 }}
-              activeDot={{ r: 8 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
       </div>
 
       {/* Call to Action */}

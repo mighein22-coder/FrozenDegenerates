@@ -107,98 +107,105 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
         </div>
       </header>
 
-      {/* Locked/Unlocked Content */}
-      {!isLocked ? (
-        <div className="h-[50vh] flex flex-col items-center justify-center animate-in fade-in zoom-in-95">
-          <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mb-6 relative">
-            <ShieldAlert size={48} className="text-ice-500" />
-            <div className="absolute inset-0 border-4 border-ice-500/20 rounded-full animate-pulse"></div>
-          </div>
-          <h3 className="text-2xl font-display font-bold text-white mb-2 uppercase tracking-widest">
-            Classified
-          </h3>
-          <p className="text-slate-400 max-w-md text-center">
-            League picks are hidden until the Saturday 11:00 AM ET deadline. Check back then to see the field.
-          </p>
-        </div>
-      ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <p className="md:hidden text-center text-xs text-slate-600 py-1 border-b border-slate-800">← Scroll →</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr>
-                  <th className="sticky left-0 z-10 bg-slate-950 p-2 md:p-4 border-b border-r border-slate-800 min-w-[90px] md:min-w-[120px] text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Player
-                  </th>
-                  {weekGames
-                    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-                    .map(game => (
-                      <th
-                        key={game.id}
-                        className="p-2 border-b border-slate-800 text-center min-w-[80px] md:min-w-[120px] bg-slate-900/50"
-                      >
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-[10px] text-slate-500">
-                            {new Date(game.startTime).toLocaleTimeString([], {
-                              hour: 'numeric',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                          <div className="font-bold text-slate-300 text-sm whitespace-nowrap">
-                            {game.awayTeamId} <span className="text-slate-600">@</span> {game.homeTeamId}
-                          </div>
+      {/* Matrix Table — always visible; per-cell logic handles open vs locked weeks */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <p className="md:hidden text-center text-xs text-slate-600 py-1 border-b border-slate-800">← Scroll →</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr>
+                <th className="sticky left-0 z-10 bg-slate-950 p-2 md:p-4 border-b border-r border-slate-800 min-w-[90px] md:min-w-[120px] text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Player
+                </th>
+                {weekGames
+                  .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                  .map(game => (
+                    <th
+                      key={game.id}
+                      className="p-2 border-b border-slate-800 text-center min-w-[80px] md:min-w-[120px] bg-slate-900/50"
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                          {new Date(game.startTime).toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit'
+                          })}
+                          {/* Lock icon for non-FINAL games in an open week */}
+                          {!isLocked && game.status !== 'FINAL' && (
+                            <Lock size={9} className="text-orange-500/70" />
+                          )}
+                        </span>
+                        <div className="font-bold text-slate-300 text-sm whitespace-nowrap">
+                          {game.awayTeamId} <span className="text-slate-600">@</span> {game.homeTeamId}
                         </div>
-                      </th>
-                    ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {leagueUsers.map(user => (
-                  <tr key={user.id} className="hover:bg-slate-800/30">
-                    <td className="sticky left-0 z-10 bg-slate-900 p-2 md:p-4 border-r border-slate-800 font-medium text-slate-200 flex items-center gap-3">
-                      {user.avatar && <img src={user.avatar} className="w-6 h-6 rounded-full" alt="" />}
-                      {user.name}
-                    </td>
-                    {weekGames.map(game => {
-                      const pick = leaguePicks.find(p => p.userId === user.id && p.gameId === game.id);
-                      let cellClass = 'p-2 md:p-3 text-center border-l border-slate-800/50';
-                      let textClass = 'font-bold text-slate-400';
+                      </div>
+                    </th>
+                  ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {leagueUsers.map(user => (
+                <tr key={user.id} className="hover:bg-slate-800/30">
+                  <td className="sticky left-0 z-10 bg-slate-900 p-2 md:p-4 border-r border-slate-800 font-medium text-slate-200 flex items-center gap-3">
+                    {user.avatar && <img src={user.avatar} className="w-6 h-6 rounded-full" alt="" />}
+                    {user.name}
+                  </td>
+                  {weekGames.map(game => {
+                    const pick = leaguePicks.find(p => p.userId === user.id && p.gameId === game.id);
+                    const cellClass = 'p-2 md:p-3 text-center border-l border-slate-800/50';
 
-                      if (pick && game.status === 'FINAL') {
-                        const isWin =
-                          (game.homeScore! > game.awayScore! &&
-                            pick.selectedTeamId === game.homeTeamId) ||
-                          (game.awayScore! > game.homeScore! && pick.selectedTeamId === game.awayTeamId);
-                        textClass = isWin
-                          ? 'text-green-400'
-                          : 'text-red-400 line-through decoration-red-500/50';
-                      } else if (pick) {
-                        textClass = 'text-ice-400';
+                    // Determine what to show in this cell
+                    if (game.status === 'FINAL') {
+                      // Game is over — show win/loss result for everyone
+                      if (!pick) {
+                        return <td key={game.id} className={cellClass}><span className="text-slate-700">-</span></td>;
                       }
-
+                      const isWin =
+                        (game.homeScore! > game.awayScore! && pick.selectedTeamId === game.homeTeamId) ||
+                        (game.awayScore! > game.homeScore! && pick.selectedTeamId === game.awayTeamId);
+                      const textClass = isWin
+                        ? 'text-green-400'
+                        : 'text-red-400 line-through decoration-red-500/50';
                       return (
                         <td key={game.id} className={cellClass}>
-                          {pick ? (
-                            <div className="flex flex-col items-center">
-                              <span className={`${textClass} text-lg`}>{pick.selectedTeamId}</span>
-                              <span className="text-xs bg-slate-800 px-1.5 rounded text-slate-500 border border-slate-700">
-                                {pick.confidence} pts
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-700">-</span>
-                          )}
+                          <div className="flex flex-col items-center">
+                            <span className={`${textClass} text-lg font-bold`}>{pick.selectedTeamId}</span>
+                            <span className="text-xs bg-slate-800 px-1.5 rounded text-slate-500 border border-slate-700">
+                              {pick.confidence} pts
+                            </span>
+                          </div>
                         </td>
                       );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    } else if (!isLocked) {
+                      // Game not finished + week not locked → deadline hasn't passed, hide picks
+                      return (
+                        <td key={game.id} className={cellClass}>
+                          <span className="font-bold text-slate-600">?</span>
+                        </td>
+                      );
+                    } else {
+                      // Game not finished + week is locked → show pending pick in ice-blue
+                      if (!pick) {
+                        return <td key={game.id} className={cellClass}><span className="text-slate-700">-</span></td>;
+                      }
+                      return (
+                        <td key={game.id} className={cellClass}>
+                          <div className="flex flex-col items-center">
+                            <span className="font-bold text-ice-400 text-lg">{pick.selectedTeamId}</span>
+                            <span className="text-xs bg-slate-800 px-1.5 rounded text-slate-500 border border-slate-700">
+                              {pick.confidence} pts
+                            </span>
+                          </div>
+                        </td>
+                      );
+                    }
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
     </div>
   );
 };

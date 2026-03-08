@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, Clock, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 import type { Week, Game, Pick } from '../../types';
 import { GameCard } from '../GameCard';
@@ -40,6 +40,15 @@ export const PicksView: React.FC<PicksViewProps> = ({
   loadingSchedule,
   sourceUrl
 }) => {
+  const [teamRecords, setTeamRecords] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch('/.netlify/functions/team-records')
+      .then(res => res.ok ? res.json() : {})
+      .then(data => setTeamRecords(data))
+      .catch(() => {});
+  }, []);
+
   const usedConfidences = currentPicks.map(p => p.confidence || 0).filter(c => c > 0);
   const targetDateStr = selectedWeekId.replace('week-', '');
 
@@ -146,6 +155,7 @@ export const PicksView: React.FC<PicksViewProps> = ({
                     onSelectTeam={handleSelectTeam}
                     onSetConfidence={handleSetConfidence}
                     disabled={isLocked}
+                    teamRecords={teamRecords}
                   />
                 );
               })
