@@ -1,5 +1,5 @@
 import { supabase, type Profile, type Week, type Game, type Pick } from './supabase';
-import { getTargetSaturdayDate, getPickDeadline, arePicksLocked, isAfterSunday3AM } from './timezone';
+import { getTargetSaturdayDate, getPickDeadline, arePicksLocked, isAfterSunday4AM } from './timezone';
 import type { User, StandingsRow } from '../types';
 
 /**
@@ -522,7 +522,7 @@ export const supabaseService = {
       const saturdayDate = week.saturday_date;
 
       // Check if it's past 3 AM Sunday
-      const pastSunday3AM = isAfterSunday3AM(saturdayDate);
+      const pastSunday4AM = isAfterSunday4AM(saturdayDate);
 
       // Check if all games are FINAL
       const { data: games } = await supabase
@@ -533,13 +533,13 @@ export const supabaseService = {
       const allGamesFinal = games && games.length > 0 && games.every(g => g.status === 'FINAL');
 
       // Mark as COMPLETED if either condition is met
-      if (allGamesFinal || pastSunday3AM) {
+      if (allGamesFinal || pastSunday4AM) {
         await supabase
           .from('weeks')
           .update({ status: 'COMPLETED' })
           .eq('id', weekId);
 
-        console.log(`Week ${weekId} marked as COMPLETED (allGamesFinal: ${allGamesFinal}, pastSunday3AM: ${pastSunday3AM})`);
+        console.log(`Week ${weekId} marked as COMPLETED (allGamesFinal: ${allGamesFinal}, pastSunday4AM: ${pastSunday4AM})`);
       }
     } catch (error) {
       console.error('Error checking week completion:', error);

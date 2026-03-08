@@ -32,7 +32,7 @@ export function getTargetSaturdayDate(): Date {
 
 /**
  * Gets the pick deadline for a given Saturday date.
- * Deadline is Saturday at 11 AM ET.
+ * Deadline is Saturday at 10 AM ET.
  * This function is DST-aware.
  *
  * NOTE: When a date string like '2026-01-17' is parsed with new Date(),
@@ -57,9 +57,9 @@ export function getPickDeadline(saturdayDate: Date | string): Date {
     day = saturdayDate.getUTCDate();
   }
 
-  // Create a date representing 11 AM ET on the Saturday
+  // Create a date representing 10 AM ET on the Saturday
   // We create it in the ET timezone context
-  const deadlineET = new Date(year, month, day, 13, 0, 0, 0);
+  const deadlineET = new Date(year, month, day, 12, 0, 0, 0);
   return fromZonedTime(deadlineET, ET_TIMEZONE);
 }
 
@@ -79,9 +79,9 @@ export function arePicksLocked(saturdayDate: Date | string): boolean {
 }
 
 /**
- * Checks if current time is past 3 AM ET Sunday (day after the given Saturday).
+ * Checks if current time is past 4 AM ET Sunday (day after the given Saturday).
  */
-export function isAfterSunday3AM(saturdayDate: Date | string): boolean {
+export function isAfterSunday4AM(saturdayDate: Date | string): boolean {
   // Parse the Saturday date
   let year: number, month: number, day: number;
 
@@ -96,11 +96,11 @@ export function isAfterSunday3AM(saturdayDate: Date | string): boolean {
     day = saturdayDate.getUTCDate();
   }
 
-  // Create Sunday 3 AM ET (Saturday + 1 day, 3 AM)
-  const sunday3amET = new Date(year, month, day + 1, 3, 0, 0, 0);
-  const sunday3amUTC = fromZonedTime(sunday3amET, ET_TIMEZONE);
+  // Create Sunday 4 AM ET (Saturday + 1 day, 4 AM)
+  const sunday4amET = new Date(year, month, day + 1, 4, 0, 0, 0);
+  const sunday4amUTC = fromZonedTime(sunday4amET, ET_TIMEZONE);
 
-  return new Date() > sunday3amUTC;
+  return new Date() > sunday4amUTC;
 }
 
 /**

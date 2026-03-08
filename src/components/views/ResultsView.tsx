@@ -44,7 +44,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
             No Results Yet
           </h3>
           <p className="text-slate-400 max-w-md text-center">
-            Results will be available after the Saturday 11:00 AM ET deadline passes.
+            Results will be available after the Saturday 10:00 AM ET deadline passes.
             Check back then to see how everyone picked!
           </p>
         </div>

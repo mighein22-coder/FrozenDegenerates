@@ -68,7 +68,7 @@ export const PicksView: React.FC<PicksViewProps> = ({
             <div className="flex items-center gap-3 text-slate-400 text-sm mt-1">
               <span className={`flex items-center gap-1 ${isLocked ? 'text-slate-500' : 'text-ice-400'}`}>
                 {isLocked ? <Lock size={14} /> : <Clock size={14} />}
-                {isLocked ? 'Selections Locked' : `Deadline: 11AM ET (${timeLeft})`}
+                {isLocked ? 'Selections Locked' : `Deadline: 10AM ET (${timeLeft})`}
               </span>
               {sourceUrl && (
                 <a
