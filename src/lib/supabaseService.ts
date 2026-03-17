@@ -343,6 +343,34 @@ export const supabaseService = {
   },
 
   /**
+   * Get recent past weeks that have passed their pick deadline.
+   * Uses a date range (last 14 days) instead of status filter so COMPLETED weeks
+   * are still included — allowing the server-side sync to resolve any PENDING picks.
+   */
+  async getRecentIncompleteWeeks(currentWeekId: string): Promise<string[]> {
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    const cutoff = twoWeeksAgo.toISOString().split('T')[0];
+    const currentDateStr = currentWeekId.replace('week-', '');
+
+    const { data } = await supabase
+      .from('weeks')
+      .select('id, saturday_date, status')
+      .neq('id', currentWeekId)
+      .gte('saturday_date', cutoff)
+      .lt('saturday_date', currentDateStr)
+      .order('saturday_date', { ascending: false })
+      .limit(3);
+
+    if (!data) return [];
+
+    // Only return weeks whose Saturday has already passed (picks are locked)
+    return data
+      .filter(w => arePicksLocked(w.saturday_date))
+      .map(w => w.id);
+  },
+
+  /**
    * Get all weeks, sorted by date (most recent first)
    */
   async getAllWeeks(): Promise<Week[]> {
@@ -385,90 +413,26 @@ export const supabaseService = {
 
   /**
    * Sync game scores from NHL API
-   * Fetches latest scores and updates games that are now FINAL
+   * Delegates all DB writes to the server-side sync-week function (uses service role key,
+   * bypasses RLS, handles already-FINAL games with PENDING picks).
    */
   async syncScores(weekId: string): Promise<{ updated: number; errors: string[] }> {
-    const errors: string[] = [];
-    let updated = 0;
-
     try {
-      // Extract date from weekId (format: week-YYYY-MM-DD)
-      const dateStr = weekId.replace('week-', '');
-
-      // Get games for this week that aren't final yet
-      const { data: games, error: gamesError } = await supabase
-        .from('games')
-        .select('*')
-        .eq('week_id', weekId)
-        .neq('status', 'FINAL');
-
-      if (gamesError) {
-        throw new Error(`Failed to fetch games: ${gamesError.message}`);
-      }
-
-      if (!games || games.length === 0) {
-        return { updated: 0, errors: [] };
-      }
-
-      // Fetch scores from NHL API via Netlify function
-      const response = await fetch('/.netlify/functions/sync-scores', {
+      const response = await fetch('/.netlify/functions/sync-week', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dateStr })
+        body: JSON.stringify({ weekId })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch scores from NHL API');
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `sync-week returned ${response.status}`);
       }
 
-      const { scores } = await response.json();
-
-      // Match games by nhl_game_id and update scores
-      for (const game of games) {
-        if (!game.nhl_game_id) {
-          errors.push(`Game ${game.id} has no nhl_game_id`);
-          continue;
-        }
-
-        const nhlScore = scores.find((s: any) => s.nhl_game_id === game.nhl_game_id);
-
-        if (!nhlScore) {
-          errors.push(`No NHL data found for game ${game.nhl_game_id}`);
-          continue;
-        }
-
-        // Only update if game is now final
-        if (nhlScore.is_final && nhlScore.home_score !== null && nhlScore.away_score !== null) {
-          const { error: updateError } = await supabase
-            .from('games')
-            .update({
-              home_score: nhlScore.home_score,
-              away_score: nhlScore.away_score,
-              status: 'FINAL'
-            })
-            .eq('id', game.id);
-
-          if (updateError) {
-            errors.push(`Failed to update game ${game.id}: ${updateError.message}`);
-            continue;
-          }
-
-          // Calculate pick results for this game
-          await this.calculatePickResults(game.id, nhlScore.home_score, nhlScore.away_score);
-          updated++;
-        }
-      }
-
-      // Safety net: recalculate any FINAL games that still have PENDING picks
-      await this.recalculatePendingPicks(weekId);
-
-      // Check if week should be marked as COMPLETED
-      await this.checkWeekCompletion(weekId);
-
-      return { updated, errors };
+      const result = await response.json();
+      return { updated: result.updated ?? 0, errors: result.errors ?? [] };
     } catch (error: any) {
-      errors.push(error.message || 'Unknown error');
-      return { updated, errors };
+      return { updated: 0, errors: [error.message || 'Unknown error'] };
     }
   },
 

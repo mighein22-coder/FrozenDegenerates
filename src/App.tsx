@@ -52,10 +52,14 @@ function App() {
         const week = await supabaseService.getCurrentWeek();
         setCurrentWeek(week);
 
-        // Sync scores on login if the week deadline has passed — ensures standings
-        // are always up-to-date without requiring a visit to the Results view
+        // Sync scores on login for the current week and any recent past weeks that
+        // aren't COMPLETED yet — ensures scores update even after the week advances
         if (arePicksLocked(week.saturday_date)) {
           await supabaseService.syncScores(week.id);
+        }
+        const pastWeekIds = await supabaseService.getRecentIncompleteWeeks(week.id);
+        for (const pastWeekId of pastWeekIds) {
+          await supabaseService.syncScores(pastWeekId);
         }
 
         // Load standings (pass current week ID for weekly score calculation)
