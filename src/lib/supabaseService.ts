@@ -34,8 +34,21 @@ export const supabaseService = {
         .select()
         .single();
 
-      if (error) throw new Error(`Failed to create week: ${error.message}`);
-      week = newWeek;
+      if (error) {
+        if (error.code === '23505') {
+          // Concurrent request already created it — re-fetch
+          const { data: existingWeek } = await supabase
+            .from('weeks')
+            .select('*')
+            .eq('id', weekId)
+            .single();
+          week = existingWeek;
+        } else {
+          throw new Error(`Failed to create week: ${error.message}`);
+        }
+      } else {
+        week = newWeek;
+      }
     }
 
     return week!;

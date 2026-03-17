@@ -101,8 +101,9 @@ function App() {
     if (!currentWeek) return;
 
     const loadGames = async () => {
-      // Prevent concurrent fetches
+      // Prevent concurrent fetches — set immediately before any async work
       if (fetchingGamesRef.current) return;
+      fetchingGamesRef.current = true;
 
       try {
         // Try to get games from database first
@@ -112,9 +113,6 @@ function App() {
           setWeekGames(games);
           return;
         }
-
-        // Mark as fetching before async operation
-        fetchingGamesRef.current = true;
 
         // If no games, fetch from NHL via Netlify function
         setLoadingSchedule(true);
