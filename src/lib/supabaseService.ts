@@ -431,9 +431,18 @@ export const supabaseService = {
    */
   async syncScores(weekId: string): Promise<{ updated: number; errors: string[] }> {
     try {
+      const syncSecret = import.meta.env.VITE_SYNC_WEEK_SECRET;
+      if (!syncSecret) {
+        console.warn('VITE_SYNC_WEEK_SECRET not configured');
+        return { updated: 0, errors: ['Sync secret not configured'] };
+      }
+
       const response = await fetch('/.netlify/functions/sync-week', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-sync-secret': syncSecret
+        },
         body: JSON.stringify({ weekId })
       });
 

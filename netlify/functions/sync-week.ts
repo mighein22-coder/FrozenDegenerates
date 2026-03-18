@@ -46,6 +46,14 @@ const handler: Handler = async (event: HandlerEvent) => {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   }
 
+  // Authenticate request via shared secret header
+  const syncSecret = process.env.SYNC_WEEK_SECRET;
+  const providedSecret = event.headers['x-sync-secret'] || event.headers['X-Sync-Secret'];
+  if (!syncSecret || providedSecret !== syncSecret) {
+    console.warn('[SYNC WEEK] Unauthorized request attempt');
+    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
+  }
+
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

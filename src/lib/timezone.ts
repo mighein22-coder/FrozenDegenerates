@@ -59,7 +59,7 @@ export function getPickDeadline(saturdayDate: Date | string): Date {
 
   // Create a date representing 10 AM ET on the Saturday
   // We create it in the ET timezone context
-  const deadlineET = new Date(year, month, day, 12, 0, 0, 0);
+  const deadlineET = new Date(year, month, day, 10, 0, 0, 0);
   return fromZonedTime(deadlineET, ET_TIMEZONE);
 }
 

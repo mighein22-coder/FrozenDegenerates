@@ -438,23 +438,47 @@ function App() {
           />
         )}
 
-        {view === 'PICKS' && currentWeek && (
-          <PicksView
-            selectedWeekId={currentWeek.id}
-            weeks={[currentWeek]}
-            isLocked={isLocked}
-            timeLeft={timeLeft}
-            currentPicks={currentPicks}
-            saveStatus={saveStatus}
-            errorMessage={errorMessage}
-            weekGames={weekGames}
-            handleSelectTeam={handleSelectTeam}
-            handleSetConfidence={handleSetConfidence}
-            handleSubmitPicks={handleSubmitPicks}
-            isPickSheetValid={isPickSheetValid}
-            loadingSchedule={loadingSchedule}
-            sourceUrl={sourceUrl}
-          />
+        {view === 'PICKS' && (
+          currentWeek ? (
+            <PicksView
+              selectedWeekId={currentWeek.id}
+              weeks={[currentWeek]}
+              isLocked={isLocked}
+              timeLeft={timeLeft}
+              currentPicks={currentPicks}
+              saveStatus={saveStatus}
+              errorMessage={errorMessage}
+              weekGames={weekGames}
+              handleSelectTeam={handleSelectTeam}
+              handleSetConfidence={handleSetConfidence}
+              handleSubmitPicks={handleSubmitPicks}
+              isPickSheetValid={isPickSheetValid}
+              loadingSchedule={loadingSchedule}
+              sourceUrl={sourceUrl}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+              {authLoading ? (
+                <>
+                  <div className="w-8 h-8 border-4 border-ice-500/20 border-t-ice-500 rounded-full animate-spin"></div>
+                  <p className="text-slate-400">Loading your picks...</p>
+                </>
+              ) : (
+                <>
+                  <div className="text-center space-y-2">
+                    <p className="text-red-400 font-semibold">Failed to Load Picks</p>
+                    <p className="text-slate-400 text-sm">Unable to load this week's schedule. Please try refreshing the page.</p>
+                  </div>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-ice-600 hover:bg-ice-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Refresh Page
+                  </button>
+                </>
+              )}
+            </div>
+          )
         )}
 
         {view === 'STANDINGS' && (
