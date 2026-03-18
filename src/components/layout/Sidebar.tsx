@@ -1,18 +1,19 @@
 import React from 'react';
-import { LayoutDashboard, Calendar, Trophy, LogOut, Grid3X3, Heart, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Calendar, Trophy, LogOut, Grid3X3, Heart, ClipboardList, Settings } from 'lucide-react';
 
-type ViewState = 'LOGIN' | 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY';
+type ViewState = 'LOGIN' | 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY' | 'ADMIN';
 
 interface SidebarProps {
   currentView: ViewState;
   onNavigate: (view: ViewState) => void;
   onLogout: () => void;
+  isAdmin?: boolean;
 }
 
 /**
  * Sidebar navigation component
  */
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout, isAdmin = false }) => {
   const navItems = [
     { id: 'DASHBOARD' as ViewState, icon: LayoutDashboard, label: 'Dashboard', shortLabel: 'Dashboard' },
     { id: 'PICKS' as ViewState, icon: Calendar, label: 'Saturday Picks', shortLabel: 'Picks' },
@@ -20,6 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLog
     { id: 'TEAM_STATS' as ViewState, icon: Heart, label: 'Team Affinity', shortLabel: 'Affinity' },
     { id: 'STANDINGS' as ViewState, icon: Trophy, label: 'Standings', shortLabel: 'Standings' },
     { id: 'MY_HISTORY' as ViewState, icon: ClipboardList, label: 'My History', shortLabel: 'History' },
+    ...(isAdmin ? [{ id: 'ADMIN' as ViewState, icon: Settings, label: 'Admin Panel', shortLabel: 'Admin' }] : []),
   ];
 
   return (

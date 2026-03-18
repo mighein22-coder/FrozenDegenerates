@@ -15,8 +15,9 @@ import { StandingsView } from './components/views/StandingsView';
 import { ResultsView } from './components/views/ResultsView';
 import { TeamStatsView } from './components/views/TeamStatsView';
 import { MyHistoryView } from './components/views/MyHistoryView';
+import { AdminView } from './components/views/AdminView';
 
-type ViewState = 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY';
+type ViewState = 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY' | 'ADMIN';
 
 function App() {
   // Authentication
@@ -429,7 +430,7 @@ function App() {
   // Main app
   return (
     <div className="min-h-screen bg-slate-950 flex text-slate-200 font-sans selection:bg-ice-500/30">
-      <Sidebar currentView={view} onNavigate={setView} onLogout={handleLogout} />
+      <Sidebar currentView={view} onNavigate={setView} onLogout={handleLogout} isAdmin={profile?.role === 'admin'} />
 
       <main className="flex-1 md:ml-20 lg:ml-64 p-4 lg:p-10 pb-24 md:pb-4 lg:pb-10 max-w-7xl mx-auto w-full">
         {/* Data Load Error Banner */}
@@ -548,6 +549,25 @@ function App() {
             picksByWeek={myHistoryPicks}
             gamesByWeek={myHistoryGames}
           />
+        )}
+
+        {view === 'ADMIN' && profile?.role === 'admin' && (
+          <AdminView
+            allWeeks={allWeeks}
+            leagueUsers={leagueProfiles.map(p => ({
+              id: p.id,
+              name: p.name,
+              email: p.email,
+              avatar: p.avatar || '',
+              role: p.role
+            }))}
+          />
+        )}
+
+        {view === 'ADMIN' && profile?.role !== 'admin' && (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <p className="text-red-400">Access denied. Admin privileges required.</p>
+          </div>
         )}
       </main>
     </div>

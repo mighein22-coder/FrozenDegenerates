@@ -34,9 +34,10 @@
   - Added visible error banner at top of app when critical data loads fail
   - Users see error message and can dismiss/retry
 
-- [ ] **8. No Admin Panel**
-  - `isAdmin` flag exists in `useAuth` but zero admin UI is built
-  - Fix: Build minimal admin view (sync trigger, week status, user management)
+- [x] **8. No Admin Panel** ✅
+  - Built AdminView with: manual sync trigger, week status toggle, user directory
+  - Only visible to users with role='admin'
+  - Accessible from sidebar for admin users
 
 - [ ] **9. No Account Management**
   - Users cannot change name, avatar, or password within the app
