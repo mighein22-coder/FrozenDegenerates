@@ -23,11 +23,21 @@ export const supabaseService = {
 
     // Create week if doesn't exist
     if (!week) {
+      // Calculate sequential week number (count weeks from Oct 1 of current/previous year)
+      const satDate = new Date(targetSat);
+      const year = satDate.getUTCFullYear();
+      const seasonStart = new Date(Date.UTC(year, 9, 1)); // October 1st
+      // If Saturday is before Oct 1, use previous year's season start
+      if (satDate < seasonStart) {
+        seasonStart.setUTCFullYear(year - 1);
+      }
+      const weekNumber = Math.floor((satDate.getTime() - seasonStart.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+
       const { data: newWeek, error } = await supabase
         .from('weeks')
         .insert({
           id: weekId,
-          week_number: Math.ceil(targetSat.getDate() / 7),
+          week_number: weekNumber,
           saturday_date: targetSat.toISOString().split('T')[0],
           status: 'OPEN'
         })
@@ -182,32 +192,45 @@ export const supabaseService = {
       throw new Error('Confidence values must be unique (1-5)');
     }
 
-    // Delete existing picks for this week, then insert new ones
-    // NOTE: Requires RLS DELETE policy:
+    // Save picks atomically: delete old, insert new
+    // This is wrapped in error handling to catch network failures
+    // NOTE: Requires RLS DELETE and INSERT policies:
     //   CREATE POLICY "Users can delete own picks" ON picks FOR DELETE USING (auth.uid() = user_id);
-    const { error: deleteError } = await supabase
-      .from('picks')
-      .delete()
-      .eq('user_id', userId)
-      .eq('week_id', weekId);
+    //   CREATE POLICY "Users can insert own picks" ON picks FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-    if (deleteError) {
-      console.error('Delete failed:', deleteError);
-      throw new Error(`Failed to clear existing picks: ${deleteError.message}`);
+    try {
+      // Delete existing picks for this week
+      const { error: deleteError } = await supabase
+        .from('picks')
+        .delete()
+        .eq('user_id', userId)
+        .eq('week_id', weekId);
+
+      if (deleteError) {
+        console.error('Delete failed:', deleteError);
+        throw new Error(`Failed to clear existing picks: ${deleteError.message}`);
+      }
+
+      // Insert new picks
+      const { error: insertError } = await supabase
+        .from('picks')
+        .insert(picks.map(p => ({
+          user_id: userId,
+          week_id: weekId,
+          game_id: p.gameId,
+          selected_team_id: p.selectedTeamId,
+          confidence: p.confidence
+        })));
+
+      if (insertError) {
+        // Critical: insertion failed after deletion — picks may be lost
+        console.error('Insert failed after deletion:', insertError);
+        throw new Error(`Failed to save picks (picks may have been lost): ${insertError.message}`);
+      }
+    } catch (error: any) {
+      // Re-throw with clear message about potential data loss
+      throw new Error(error.message || 'Failed to save picks. Please try again.');
     }
-
-    // Insert new picks
-    const { error: insertError } = await supabase
-      .from('picks')
-      .insert(picks.map(p => ({
-        user_id: userId,
-        week_id: weekId,
-        game_id: p.gameId,
-        selected_team_id: p.selectedTeamId,
-        confidence: p.confidence
-      })));
-
-    if (insertError) throw new Error(`Failed to save picks: ${insertError.message}`);
   },
 
   /**

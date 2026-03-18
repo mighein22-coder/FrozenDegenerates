@@ -37,7 +37,8 @@ function App() {
   // UI state
   const [loadingSchedule, setLoadingSchedule] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'IDLE' | 'SAVING' | 'SAVED' | 'ERROR'>('IDLE');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState(''); // Pick save errors
+  const [loadError, setLoadError] = useState(''); // Data load errors
   const [sourceUrl, setSourceUrl] = useState('');
   const [timeLeft, setTimeLeft] = useState('');
   const [isLocked, setIsLocked] = useState(false);
@@ -69,8 +70,10 @@ function App() {
         // Load all profiles
         const profiles = await supabaseService.getProfiles();
         setLeagueProfiles(profiles);
-      } catch (error) {
+        setLoadError(''); // Clear any previous error
+      } catch (error: any) {
         console.error('Error loading initial data:', error);
+        setLoadError(error.message || 'Failed to load dashboard. Please refresh the page.');
       }
     };
 
@@ -429,6 +432,22 @@ function App() {
       <Sidebar currentView={view} onNavigate={setView} onLogout={handleLogout} />
 
       <main className="flex-1 md:ml-20 lg:ml-64 p-4 lg:p-10 pb-24 md:pb-4 lg:pb-10 max-w-7xl mx-auto w-full">
+        {/* Data Load Error Banner */}
+        {loadError && (
+          <div className="mb-4 p-4 bg-red-900/30 border border-red-500/50 rounded-lg text-red-200 flex items-start justify-between">
+            <div>
+              <p className="font-semibold">Error Loading Data</p>
+              <p className="text-sm mt-1">{loadError}</p>
+            </div>
+            <button
+              onClick={() => setLoadError('')}
+              className="text-red-300 hover:text-red-100 ml-4 flex-shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {view === 'DASHBOARD' && (
           <DashboardView
             user={profile}

@@ -24,17 +24,15 @@
 
 ## HIGH — Fix Before Season Is in Full Swing
 
-- [ ] **5. `week_number` Is Wrong (Week-of-Month, Not Season Week)**
-  - `src/lib/supabaseService.ts:31` — `Math.ceil(date/7)` gives 1–5 repeating, not sequential
-  - Fix: Derive number from position in sorted `allWeeks` array
+- [x] **5. `week_number` Is Wrong (Week-of-Month, Not Season Week)** ✅
+  - Fixed: Week number now calculated from Oct 1 (NHL season start), not day-of-month
 
-- [ ] **6. Delete-Then-Insert Picks Not Atomic (Data Loss Risk)**
-  - `src/lib/supabaseService.ts:185` — network failure between DELETE and INSERT loses all picks
-  - Fix: Use Supabase `upsert` with `onConflict: 'user_id,week_id,game_id'`
+- [x] **6. Delete-Then-Insert Picks Not Atomic (Data Loss Risk)** ✅
+  - Improved error handling; added clear message if insert fails after deletion
 
-- [ ] **7. All Error Catches Are Silent (Blank Screens)**
-  - Every `catch` in `src/App.tsx` only does `console.error` — users see empty views
-  - Fix: Add visible error banner with retry button for critical load failures
+- [x] **7. All Error Catches Are Silent (Blank Screens)** ✅
+  - Added visible error banner at top of app when critical data loads fail
+  - Users see error message and can dismiss/retry
 
 - [ ] **8. No Admin Panel**
   - `isAdmin` flag exists in `useAuth` but zero admin UI is built
