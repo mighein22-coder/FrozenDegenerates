@@ -1,9 +1,8 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 
 /**
- * Netlify Function: Sync NHL Game Scores
- * Fetches current game scores from the NHL API for a specific date
- * Returns game scores that can be used to update the database
+ * Netlify Function: Fetch NHL Schedule via Direct NHL API
+ * Uses the official NHL.com API endpoint (free, no auth required)
  */
 const handler: Handler = async (event: HandlerEvent) => {
   // Only allow POST requests
@@ -22,7 +21,15 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (!dateStr) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'dateStr parameter is required (YYYY-MM-DD format)' })
+        body: JSON.stringify({ error: 'dateStr parameter is required' })
+      };
+    }
+
+    // Validate before interpolating into the NHL API URL
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'dateStr must be formatted YYYY-MM-DD' })
       };
     }
 
@@ -40,6 +47,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     const allGames = data.gameWeek?.[0]?.games ?? [];
 
     // Filter games by converting UTC time to ET timezone before comparing dates
+    // A game at 7 PM ET Saturday shows as midnight UTC Sunday, so we can't just compare UTC dates
     const filteredGames = allGames.filter((g: any) => {
       const gameTimeUTC = new Date(g.startTimeUTC);
       // Use Intl to get the ET date, DST-aware (handles both EST UTC-5 and EDT UTC-4)
@@ -47,19 +55,20 @@ const handler: Handler = async (event: HandlerEvent) => {
       return gameDateET === dateStr;
     });
 
-    // Extract score information for each game
-    const scores = filteredGames.map((g: any) => ({
+    // Parse games from NHL API response
+    // Use snake_case to match Supabase schema
+    // Don't include 'id' - let Supabase generate UUIDs automatically
+    const games = filteredGames.map((g: any) => ({
+      week_id: `week-${dateStr}`,
       nhl_game_id: g.id,
       home_team_id: g.homeTeam.abbrev,
       away_team_id: g.awayTeam.abbrev,
-      home_score: g.homeTeam.score ?? null,
-      away_score: g.awayTeam.score ?? null,
-      game_state: g.gameState, // 'FUT', 'PRE', 'LIVE', 'FINAL', 'OFF', 'CRIT'
-      is_final: g.gameState === 'FINAL' || g.gameState === 'OFF'
+      start_time: g.startTimeUTC,
+      status: 'SCHEDULED'
     }));
 
-    console.log(`[SYNC SCORES] Date: ${dateStr}, Found ${scores.length} games`);
-    console.log(`[SYNC SCORES] Final games: ${scores.filter((s: any) => s.is_final).length}`);
+    console.log(`[NHL SCHEDULE] Requested date: ${dateStr}, Found ${games.length} games`);
+    console.log(`[NHL SCHEDULE] Total games in API response: ${allGames.length}`);
 
     return {
       statusCode: 200,
@@ -68,19 +77,17 @@ const handler: Handler = async (event: HandlerEvent) => {
         'Access-Control-Allow-Origin': '*'
       },
       body: JSON.stringify({
-        dateStr,
-        scores,
-        totalGames: scores.length,
-        finalGames: scores.filter((s: any) => s.is_final).length
+        games,
+        sourceUrl: `https://www.nhl.com/schedule/${dateStr}`
       })
     };
   } catch (error: any) {
-    console.error('[SYNC SCORES ERROR]', error);
+    console.error('[NHL SCHEDULE ERROR]', error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        error: error.message || 'Failed to fetch NHL scores'
+        error: error.message || 'Failed to fetch NHL schedule'
       })
     };
   }
