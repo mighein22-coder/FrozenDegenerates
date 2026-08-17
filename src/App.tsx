@@ -56,7 +56,7 @@ function App() {
 
         // Sync scores on login for the current week and any recent past weeks that
         // aren't COMPLETED yet — ensures scores update even after the week advances
-        if (arePicksLocked(week.saturday_date)) {
+        if (arePicksLocked(week.startDate)) {
           await supabaseService.syncScores(week.id);
         }
         const pastWeekIds = await supabaseService.getRecentIncompleteWeeks(week.id);
@@ -120,7 +120,7 @@ function App() {
 
         // If no games, fetch from NHL via Netlify function
         setLoadingSchedule(true);
-        const dateStr = currentWeek.saturday_date;
+        const dateStr = currentWeek.startDate;
 
         const response = await fetch('/.netlify/functions/gemini-schedule', {
           method: 'POST',
@@ -156,8 +156,8 @@ function App() {
       if (!currentWeek) return;
 
       // Pass the date string directly - timezone.ts will parse it correctly
-      setIsLocked(arePicksLocked(currentWeek.saturday_date));
-      setTimeLeft(getTimeUntilDeadline(currentWeek.saturday_date));
+      setIsLocked(arePicksLocked(currentWeek.startDate));
+      setTimeLeft(getTimeUntilDeadline(currentWeek.startDate));
     };
 
     updateDeadline();
@@ -192,19 +192,26 @@ function App() {
 
     const loadResultsData = async () => {
       try {
-        // First sync scores from NHL API
-        setSyncingScores(true);
-        await supabaseService.syncScores(selectedResultsWeekId);
-        setSyncingScores(false);
+        // A COMPLETED week is fully resolved — syncing it can't change anything,
+        // so skip the Netlify round-trip entirely.
+        const isCompleted =
+          allWeeks.find(w => w.id === selectedResultsWeekId)?.status === 'COMPLETED';
 
-        // Then load the updated data
-        const games = await supabaseService.getGamesByWeek(selectedResultsWeekId);
-        const picks = await supabaseService.getAllPicks(selectedResultsWeekId);
+        if (!isCompleted) {
+          setSyncingScores(true);
+          await supabaseService.syncScores(selectedResultsWeekId);
+          setSyncingScores(false);
+        }
+
+        // Then load the updated data (independent queries — run them together)
+        const [games, picks, standingsData] = await Promise.all([
+          supabaseService.getGamesByWeek(selectedResultsWeekId),
+          supabaseService.getAllPicks(selectedResultsWeekId),
+          supabaseService.getStandings(selectedResultsWeekId)
+        ]);
+
         setResultsWeekGames(games);
         setResultsWeekPicks(picks);
-
-        // Refresh standings after score sync
-        const standingsData = await supabaseService.getStandings(selectedResultsWeekId);
         setStandings(standingsData);
       } catch (error) {
         console.error('Error loading results data:', error);
@@ -213,7 +220,7 @@ function App() {
     };
 
     loadResultsData();
-  }, [view, selectedResultsWeekId]);
+  }, [view, selectedResultsWeekId, allWeeks]);
 
   // Load picks from completed weeks only for team stats view
   const [teamStatsPicks, setTeamStatsPicks] = useState<Pick[]>([]);
@@ -227,17 +234,12 @@ function App() {
 
     const loadCompletedWeeksPicks = async () => {
       try {
-        // Get only completed weeks
-        const completedWeeks = allWeeks.filter(w => w.status === 'COMPLETED');
+        // Single batched query rather than one round-trip per completed week
+        const completedWeekIds = allWeeks
+          .filter(w => w.status === 'COMPLETED')
+          .map(w => w.id);
 
-        // Load picks for each completed week
-        const allCompletedPicks: Pick[] = [];
-        for (const week of completedWeeks) {
-          const picks = await supabaseService.getAllPicks(week.id);
-          allCompletedPicks.push(...picks);
-        }
-
-        setTeamStatsPicks(allCompletedPicks);
+        setTeamStatsPicks(await supabaseService.getPicksForWeeks(completedWeekIds));
       } catch (error) {
         console.error('Error loading completed weeks picks:', error);
       }
@@ -252,16 +254,19 @@ function App() {
 
     const loadMyHistory = async () => {
       try {
-        const relevantWeeks = allWeeks.filter(
-          w => w.status === 'LOCKED' || w.status === 'COMPLETED'
-        );
-        const picksMap: Record<string, Pick[]> = {};
-        const gamesMap: Record<string, Game[]> = {};
+        const relevantWeekIds = allWeeks
+          .filter(w => w.status === 'LOCKED' || w.status === 'COMPLETED')
+          .map(w => w.id);
 
-        for (const week of relevantWeeks) {
-          picksMap[week.id] = await supabaseService.getAllPicks(week.id);
-          gamesMap[week.id] = await supabaseService.getGamesByWeek(week.id);
-        }
+        // Two batched queries in parallel, rather than two per week
+        const [picks, gamesMap] = await Promise.all([
+          supabaseService.getPicksForWeeks(relevantWeekIds),
+          supabaseService.getGamesForWeeks(relevantWeekIds)
+        ]);
+
+        const picksMap: Record<string, Pick[]> = {};
+        for (const weekId of relevantWeekIds) picksMap[weekId] = [];
+        for (const pick of picks) (picksMap[pick.weekId] ??= []).push(pick);
 
         setMyHistoryPicks(picksMap);
         setMyHistoryGames(gamesMap);
