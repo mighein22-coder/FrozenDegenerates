@@ -7,6 +7,7 @@ interface DashboardViewProps {
   user: Profile | null;
   standings: StandingsRow[];
   currentPicks: Partial<Pick>[];
+  isLocked: boolean;
   onNavigate: (view: string) => void;
 }
 
@@ -17,9 +18,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   user,
   standings,
   currentPicks,
+  isLocked,
   onNavigate
 }) => {
   const userStats = standings.find(s => s.userId === user?.id);
+
+  // The call to action depends on where the user actually is in the week
+  const hasFullSheet = currentPicks.length === 5;
+  const cta = isLocked
+    ? {
+        heading: hasFullSheet ? 'Picks Locked In' : 'Week Locked',
+        body: hasFullSheet
+          ? 'The deadline has passed and your picks are in. Follow the games as results come in.'
+          : "The Saturday 10:00 AM ET deadline has passed, so this week's sheet is closed.",
+        button: 'View Picks'
+      }
+    : hasFullSheet
+      ? {
+          heading: 'Picks Submitted',
+          body: 'All five selections are in. You can still change them until Saturday at 10:00 AM ET.',
+          button: 'Edit Picks'
+        }
+      : {
+          heading: 'Make Picks',
+          body: `Check the schedule and make your confidence selections for the upcoming Saturday. ${5 - currentPicks.length} of 5 still to go.`,
+          button: 'Make Picks'
+        };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
@@ -67,13 +91,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Call to Action */}
       <div className="bg-gradient-to-r from-ice-900/50 to-slate-900 border border-ice-500/20 p-8 rounded-xl flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold text-white mb-2">Make Picks</h3>
-          <p className="text-slate-400 max-w-lg">
-            Check the schedule and make your confidence selections for the upcoming Saturday.
-          </p>
+          <h3 className="text-xl font-bold text-white mb-2">{cta.heading}</h3>
+          <p className="text-slate-400 max-w-lg">{cta.body}</p>
         </div>
         <Button size="lg" onClick={() => onNavigate('PICKS')}>
-          Make Picks
+          {cta.button}
         </Button>
       </div>
     </div>
