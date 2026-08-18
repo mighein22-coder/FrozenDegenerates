@@ -75,16 +75,21 @@
     camelCase, both typed as `Week`; `App.tsx` read both spellings
   - DB types renamed to `*Row`; cleared 12 typecheck errors `vite build` never showed
 
-- [ ] **24. Pick Deadline Enforced Only in Browser JavaScript**
-  - `savePicks` checks the deadline client-side; the RLS policies carry no time
-    condition, so picks can be rewritten from the console after games start
-  - `supabase/migrations/0002_enforce_deadline.sql` fixes this — **decision pending**
+- [x] **24. Pick Deadline Enforced Only in Browser JavaScript** ✅
+  - `savePicks` checked the deadline client-side; the RLS policies carried no
+    time condition, so picks could be rewritten from the console after games started
+  - Fixed by `supabase/migrations/0002_enforce_deadline.sql` (**needs applying**)
+  - Verified not to affect scoring: `sync-week` uses the service-role key, which
+    bypasses RLS, so picks still resolve and weeks still close after the deadline
 
 - [ ] **25. `savePicks` Can Lose a Member's Picks**
   - Deletes all picks for the week then inserts the new set, with no transaction.
     A failure between the two loses them. #6 above marked this fixed, but only
     the error message improved
   - Fix: a `save_picks` RPC doing both in one transaction
+  - Note: #24 marginally widens this. A submission landing exactly on the 10:00
+    boundary can now have its insert refused after the delete succeeded. The
+    window is milliseconds; the RPC closes it
 
 - [ ] **26. `VITE_SYNC_WEEK_SECRET` Is Not Secret**
   - Vite inlines `VITE_*` into the public bundle, so the shared secret guarding

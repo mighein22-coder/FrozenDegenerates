@@ -57,8 +57,9 @@ Nothing currently in flight.
 - [ ] **Apply `0001_pick_visibility.sql`.** Run the policy-audit query in
       `supabase/README.md` first — the deployed policy names were created by hand
       and may not match what the migration drops.
-- [ ] **Decide on `0002_enforce_deadline.sql`** (optional). Without it the
-      deadline stays enforced only in browser JavaScript.
+- [ ] **Apply `0002_enforce_deadline.sql`** straight after 0001. Adopted — moves
+      deadline enforcement out of browser JavaScript and into the database.
+      Verified not to affect scoring, which runs under the service-role key.
 - [ ] #10 Verify RLS on `weeks` and `games`. The anon client inserts weeks and
       games and updates week status, so the deployed policies must permit any
       authenticated member to do the same. Decide whether to move those writes
@@ -70,7 +71,9 @@ Nothing currently in flight.
       week then inserts the new set, with no transaction. If the insert fails
       after the delete, the picks are gone. `ASSESSMENT.md` #6 marked this fixed,
       but only the error message improved. Fix: a `save_picks` RPC doing both in
-      one transaction.
+      one transaction. **Slightly more pressing once `0002` is applied** — a
+      submission landing exactly on the 10:00 boundary can now fail its insert
+      and lose the sheet.
 - [ ] `VITE_SYNC_WEEK_SECRET` is inlined into the public JS bundle, so the shared
       secret guarding `sync-week` is readable by anyone. Replace with a verified
       Supabase JWT plus an admin role check.

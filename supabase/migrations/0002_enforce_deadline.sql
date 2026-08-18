@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0002_enforce_deadline.sql   [OPTIONAL — see supabase/README.md]
+-- 0002_enforce_deadline.sql
 --
 -- Enforce the Saturday 10:00 AM ET pick deadline in the database.
 --
@@ -11,6 +11,10 @@
 -- 0001 hides other players' picks before the deadline. This closes the other
 -- half of the same hole: it stops anyone changing their own picks after it.
 -- The two are complementary; applying only 0001 leaves late edits possible.
+--
+-- Scoring is unaffected: sync-week connects with the service-role key, which
+-- bypasses RLS, so it still resolves picks and closes weeks after the deadline.
+-- Verified — see supabase/README.md.
 --
 -- Depends on picks_revealed() from 0001. Apply 0001 first.
 -- Safe to run more than once.

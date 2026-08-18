@@ -31,8 +31,8 @@ truth until someone captures it.
 
 | File | Status | What it does |
 |---|---|---|
-| `0001_pick_visibility.sql` | Recommended | Hides other players' picks until the week's Saturday 10:00 ET deadline passes. |
-| `0002_enforce_deadline.sql` | Optional | Enforces that deadline for writes too, so picks cannot be changed after games start. Requires 0001. |
+| `0001_pick_visibility.sql` | Apply | Hides other players' picks until the week's Saturday 10:00 ET deadline passes. |
+| `0002_enforce_deadline.sql` | Apply after 0001 | Enforces that deadline for writes too, so picks cannot be changed after games start. |
 
 ### A word on what 0001 can and cannot do
 
@@ -100,6 +100,11 @@ one past week. Verified:
   The database and the countdown lock at the same moment.
 - With `0002`, editing an open-week pick succeeds; updating, inserting, or
   deleting a locked-week pick is refused.
+- **Scoring still works after the deadline.** Against a role created with
+  `BYPASSRLS` — as Supabase's `service_role` is — `sync-week`'s writes all
+  succeed on a locked week: games marked FINAL, all picks resolved with points
+  awarded, and the week marked COMPLETED. This is the case that would have been
+  bad to get wrong, since standings would have silently stopped updating.
 - Both files apply three times in a row with no error and leave exactly four
   policies on `picks`.
 
@@ -108,3 +113,16 @@ rather than raising an error — that is how a Postgres `USING` clause works. A
 blocked **INSERT** does raise. Since `savePicks` deletes then inserts, a
 late-submission attempt surfaces as an insert error, which the UI already
 displays.
+
+### The one real cost of 0002
+
+`savePicks` deletes a member's picks and then inserts the new set, with no
+transaction (issue #25 in `ASSESSMENT.md`). Today, if the clock crosses 10:00 ET
+in the gap between those two statements, the insert still succeeds. With `0002`
+applied it is refused, and that member's picks are gone.
+
+The window is milliseconds wide and only exists for someone submitting at
+literally 10:00:00 on a Saturday. It is a real widening of an existing bug, not a
+new one, and the `save_picks` RPC that fixes #25 closes it completely. Worth
+knowing; not worth withholding the migration over, since the alternative is
+leaving late edits possible all season.
