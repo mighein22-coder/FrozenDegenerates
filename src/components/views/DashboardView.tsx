@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Profile } from '../../lib/supabase';
 import type { StandingsRow, Pick } from '../../types';
 import { Button } from '../Button';
@@ -8,7 +9,6 @@ interface DashboardViewProps {
   standings: StandingsRow[];
   currentPicks: Partial<Pick>[];
   isLocked: boolean;
-  onNavigate: (view: string) => void;
 }
 
 /**
@@ -18,9 +18,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   user,
   standings,
   currentPicks,
-  isLocked,
-  onNavigate
+  isLocked
 }) => {
+  const navigate = useNavigate();
   const userStats = standings.find(s => s.userId === user?.id);
 
   // The call to action depends on where the user actually is in the week
@@ -94,7 +94,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <h3 className="text-xl font-bold text-white mb-2">{cta.heading}</h3>
           <p className="text-slate-400 max-w-lg">{cta.body}</p>
         </div>
-        <Button size="lg" onClick={() => onNavigate('PICKS')}>
+        <Button size="lg" onClick={() => navigate('/picks')}>
           {cta.button}
         </Button>
       </div>

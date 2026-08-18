@@ -51,6 +51,8 @@ Nothing currently in flight.
       (`supabase/migrations/0002_enforce_deadline.sql`).
 - [x] Season segments — three auto-computed thirds with their own standings,
       selectable alongside the cumulative season table. No schema change.
+- [x] URL routing, with a working `/auth/callback`. Password reset links used to
+      dead-end at the login screen with no way to set a new password.
 
 ---
 
@@ -58,6 +60,9 @@ Nothing currently in flight.
 
 ### Needs a decision or an action from the pool admin
 
+- [ ] **Allowlist `/auth/callback` in Supabase** → Authentication → URL
+      Configuration. Password reset stays broken until this is set, no matter
+      what the app does. See `docs/OPERATIONS.md`.
 - [ ] **Apply `0001_pick_visibility.sql`.** Run the policy-audit query in
       `supabase/README.md` first — the deployed policy names were created by hand
       and may not match what the migration drops.
@@ -84,9 +89,6 @@ Nothing currently in flight.
 
 ### Planned features
 
-- [ ] URL routing and a real `/auth/callback`. Password reset links currently
-      dead-end: `LoginView` sends users to a route that does not exist, and there
-      is no set-new-password form.
 - [ ] Profile / account settings (#9) — name, avatar, password.
 - [ ] Automated score sync on a schedule. Scores only move today when a human
       opens the app.

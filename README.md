@@ -31,6 +31,9 @@ standings — so a slow start doesn't put the rest of the year out of reach.
 **Team Affinity** — each member's most-picked teams.
 **Admin** — manual score sync, week status, member directory (admins only).
 
+Every view has its own URL, so pages can be bookmarked and shared — including a
+specific week of the matrix or a specific segment of the standings.
+
 ## Tech stack
 
 - **Frontend** — React 19, TypeScript, Vite. Tailwind via CDN; there is no CSS build step.
@@ -82,8 +85,6 @@ Tracked in full in `TASKS.md`. The ones worth knowing up front:
 - **Scores only sync when someone opens the app.** There is no scheduled job.
 - **Weeks are created lazily** by whoever logs in first after Monday 6 AM.
 - **No signup UI.** Accounts are created by hand in the Supabase dashboard.
-- **Password reset is broken** — the reset email points at `/auth/callback`, a
-  route that does not exist.
 - **`savePicks` is not transactional** and can lose a member's picks if the
   insert fails after the delete.
 

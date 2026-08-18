@@ -66,6 +66,55 @@ job doing this.
 the results view. If nobody opens the app all weekend, standings stay stale until
 someone does. Automating this is on the roadmap in `TASKS.md`.
 
+## Routes
+
+The app uses History-API routing (`react-router-dom`). `netlify.toml` already
+serves `index.html` for any path, so deep links and refreshes work.
+
+| Path | View |
+|---|---|
+| `/` | Dashboard |
+| `/picks` | Saturday Picks |
+| `/matrix?week=week-YYYY-MM-DD` | League Matrix, optionally on a given week |
+| `/affinity` | Team Affinity |
+| `/standings?segment=1\|2\|3\|season` | Standings, optionally on a given scope |
+| `/history` | My History |
+| `/admin` | Admin panel (admins only) |
+| `/login` | Login screen |
+| `/auth/callback` | Landing page for every emailed auth link |
+
+`src/routes.ts` is the single definition driving both the router and the
+sidebar, so a path cannot exist in one and not the other. Query parameters are
+validated against real data — a stale `?week=` falls back to the most recent
+week rather than rendering an empty grid.
+
+### `/auth/callback` — required Supabase setting
+
+Password-reset and confirmation emails land here. **This route only works if the
+URL is allowlisted in Supabase**, or Supabase refuses the redirect regardless of
+what the app does:
+
+Supabase → Authentication → **URL Configuration**
+- **Site URL**: the production origin, e.g. `https://icepick.example.com`
+- **Redirect URLs**: add
+  - `https://<your-domain>/auth/callback`
+  - `http://localhost:8888/auth/callback` (for `netlify dev`)
+  - `https://*--<your-site>.netlify.app/auth/callback` (deploy previews, optional)
+
+Also confirm the "Confirm signup" and "Reset password" email templates point at
+`{{ .SiteURL }}/auth/callback`.
+
+The route handles both link shapes Supabase can send — implicit flow, where the
+token arrives in the URL fragment, and PKCE, where a `code` arrives in the query
+string — plus expired and already-used links. It renders full-screen, outside
+the signed-in shell, because a recovery link *does* create a session and the
+user must be able to set a password without the app navigating away.
+
+One subtlety worth preserving: `src/lib/authRedirect.ts` snapshots the auth
+parameters at page load and **must be imported before `lib/supabase`**
+(`src/index.tsx` does this). supabase-js erases the URL fragment during its own
+initialization, so by the time a component mounts there is nothing left to read.
+
 ## Season segments
 
 The season is split into three roughly equal segments, each with its own
