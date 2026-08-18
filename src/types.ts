@@ -44,11 +44,28 @@ export interface Week {
   status: 'OPEN' | 'LOCKED' | 'COMPLETED';
 }
 
+export interface Segment {
+  number: number;
+  label: string;
+  /** First Saturday of the segment, YYYY-MM-DD */
+  startDate: string;
+  /** Last Saturday of the segment, YYYY-MM-DD */
+  endDate: string;
+  weekCount: number;
+}
+
 export interface StandingsRow {
   userId: string;
   name: string;
   avatar: string;
+  /**
+   * Points for the selected scope — a single segment, or the whole season when
+   * no segment is selected. This drives the rank.
+   */
   totalPoints: number;
+  /** Cumulative season points, shown alongside for reference in every scope. */
+  seasonPoints: number;
+  /** Wins and losses for the selected scope. */
   wins: number;
   losses: number;
   weeklyScore: number;

@@ -47,6 +47,10 @@ Nothing currently in flight.
 
 - [x] Hide other players' picks until the week locks
       (`supabase/migrations/0001_pick_visibility.sql`).
+- [x] Enforce the pick deadline in the database
+      (`supabase/migrations/0002_enforce_deadline.sql`).
+- [x] Season segments — three auto-computed thirds with their own standings,
+      selectable alongside the cumulative season table. No schema change.
 
 ---
 
@@ -80,9 +84,6 @@ Nothing currently in flight.
 
 ### Planned features
 
-- [ ] Season segments — three auto-computed thirds with their own standings,
-      alongside the cumulative season table. No schema change; derived in code
-      from `SEASON_START` / `SEASON_END`.
 - [ ] URL routing and a real `/auth/callback`. Password reset links currently
       dead-end: `LoginView` sends users to a route that does not exist, and there
       is no set-new-password form.

@@ -1,7 +1,6 @@
 import { supabase, type Profile, type WeekRow, type GameRow, type PickRow } from './supabase';
 import { getTargetSaturdayDate, arePicksLocked } from './timezone';
-import { rankStandings } from './standings';
-import type { User, StandingsRow, Week, Game, Pick } from '../types';
+import type { User, Week, Game, Pick } from '../types';
 
 /**
  * Maps a `weeks` row (snake_case, as stored) to the camelCase `Week` app type.
@@ -299,61 +298,30 @@ export const supabaseService = {
   },
 
   /**
-   * Calculate and get current standings
-   * @param currentWeekId - Optional week ID to calculate weekly score for
+   * Fetch the raw inputs the standings are built from.
+   *
+   * Returns data rather than a finished table so the caller can derive the
+   * season standings and each segment's standings from a single fetch — the
+   * segment selector then switches scope with no round-trip. Build the table
+   * with `computeStandings` from `lib/standings.ts`.
    */
-  async getStandings(currentWeekId?: string): Promise<StandingsRow[]> {
-    // Get all profiles
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('*');
+  async getStandingsInputs(): Promise<{ profiles: Profile[]; picks: Pick[] }> {
+    const [profilesResult, picksResult] = await Promise.all([
+      supabase.from('profiles').select('*'),
+      supabase.from('picks').select('*')
+    ]);
 
-    if (profilesError) throw new Error(`Failed to get profiles: ${profilesError.message}`);
-    if (!profiles) return [];
-
-    // Get all picks
-    const { data: picks, error: picksError } = await supabase
-      .from('picks')
-      .select('*');
-
-    if (picksError) throw new Error(`Failed to get picks: ${picksError.message}`);
-
-    // Determine the week to use for weekly score:
-    // Use the provided currentWeekId, or fall back to the most recent week that has any resolved picks
-    let weeklyScoreWeekId = currentWeekId;
-    if (!weeklyScoreWeekId && picks && picks.length > 0) {
-      const resolvedPicks = picks.filter(p => p.result !== 'PENDING');
-      if (resolvedPicks.length > 0) {
-        // Find the most recent week_id among resolved picks
-        const weekIds = [...new Set(resolvedPicks.map(p => p.week_id))];
-        weeklyScoreWeekId = weekIds.sort().reverse()[0];
-      }
+    if (profilesResult.error) {
+      throw new Error(`Failed to get profiles: ${profilesResult.error.message}`);
+    }
+    if (picksResult.error) {
+      throw new Error(`Failed to get picks: ${picksResult.error.message}`);
     }
 
-    // Calculate standings for each user
-    const standings = profiles.map((profile: Profile) => {
-      const userPicks = picks?.filter(p => p.user_id === profile.id) || [];
-      const wins = userPicks.filter(p => p.result === 'WIN').length;
-      const losses = userPicks.filter(p => p.result === 'LOSS').length;
-      const totalPoints = userPicks.reduce((sum, p) => sum + p.points_earned, 0);
-      const weeklyPicks = weeklyScoreWeekId
-        ? userPicks.filter(p => p.week_id === weeklyScoreWeekId)
-        : [];
-      const weeklyScore = weeklyPicks.reduce((sum, p) => sum + p.points_earned, 0);
-
-      return {
-        userId: profile.id,
-        name: profile.name,
-        avatar: profile.avatar,
-        wins,
-        losses,
-        totalPoints,
-        weeklyScore,
-        rank: 0 // Will be set after sorting
-      };
-    });
-
-    return rankStandings(standings, 'totalPoints');
+    return {
+      profiles: profilesResult.data ?? [],
+      picks: (picksResult.data ?? []).map(mapPick)
+    };
   },
 
   /**
