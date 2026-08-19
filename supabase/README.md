@@ -19,16 +19,32 @@ Migrations are written to be idempotent, so re-running one is safe.
 | Migration | Applied? | What it does |
 | --- | --- | --- |
 | `0001_lock_profile_privileged_columns.sql` | ☐ not yet | Stops a member from promoting themselves to `admin` by editing their own `profiles` row |
+| `0002_allow_signup_profile_insert.sql` | ☐ not yet | Lets a new user create their own `profiles` row at signup, without being able to set `role` |
 
-Tick the box above once the pool admin has run it against production.
+Tick the boxes above once the pool admin has run them against production. Apply
+them in order — 0002 assumes 0001 is already in place.
+
+## Signup and email confirmation
+
+`0002` covers the signup flow the app actually implements today: the client
+inserts its own `profiles` row right after `supabase.auth.signUp()`.
+
+**That only works with email confirmation turned off** (Authentication →
+Providers → Email → "Confirm email"). With confirmation on, `signUp()` returns
+no session, so the insert arrives unauthenticated, `auth.uid()` is NULL, and
+RLS refuses it — no INSERT policy can rescue a request that carries no
+identity.
+
+If the pool wants confirm-on-signup, the profile row has to be created
+server-side instead, by a `SECURITY DEFINER` trigger on `auth.users` that
+reads the display name out of `raw_user_meta_data`. That replaces the client
+insert in `useAuth.signUp` rather than sitting alongside it, so it is a
+different change, not an addition to `0002`.
 
 ## Known gaps not covered here
 
-- `profiles` has no `INSERT` policy in the schema as documented in
-  `PLANNING.md`. Self-service signup (`useAuth.signUp`) writes the profile row
-  from the client, so it needs either an INSERT policy or a
-  `handle_new_user()` trigger on `auth.users`. Worth settling as part of the
-  signup work rather than bolting onto this migration.
 - Changing a member's email still has to be done by an admin. Doing it in-app
   needs Supabase's confirm-change flow plus a trigger keeping
   `profiles.email` in sync with `auth.users.email`.
+- `games` and `picks` still need the RLS review described in ASSESSMENT.md
+  item #10.

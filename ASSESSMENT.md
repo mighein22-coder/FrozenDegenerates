@@ -49,8 +49,10 @@
   - "Admin functions" (`updateGameScore`, `calculatePickResults`) use anon key with no role check
   - Action: Verify in Supabase dashboard that UPDATE on `games`/`picks` requires service role
   - Partially addressed: `supabase/migrations/0001_lock_profile_privileged_columns.sql`
-    closes self-promotion to `admin` via the `profiles` UPDATE policy. **Not yet
-    applied** — the pool admin must run it in the SQL Editor. `games`/`picks`
+    closes self-promotion to `admin` via the `profiles` UPDATE policy, and
+    `0002_allow_signup_profile_insert.sql` adds the missing INSERT policy for
+    signup without letting a new user choose their own `role`. **Neither is yet
+    applied** — the pool admin must run them in the SQL Editor. `games`/`picks`
     still need the same review.
 
 ---
