@@ -120,6 +120,15 @@ export function useAuth() {
     }
   };
 
+  /**
+   * Re-read the current user's profile from the database. Call after a profile
+   * update so the sidebar/dashboard pick up the new name or avatar immediately.
+   */
+  const refreshProfile = async () => {
+    if (!user) return;
+    await loadProfile(user.id);
+  };
+
   return {
     user,
     profile,
@@ -127,6 +136,7 @@ export function useAuth() {
     signIn,
     signOut,
     signUp,
+    refreshProfile,
     isAuthenticated: !!user,
     isAdmin: profile?.role === 'admin'
   };

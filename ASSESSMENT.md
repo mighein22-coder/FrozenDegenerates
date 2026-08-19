@@ -39,9 +39,11 @@
   - Only visible to users with role='admin'
   - Accessible from sidebar for admin users
 
-- [ ] **9. No Account Management**
-  - Users cannot change name, avatar, or password within the app
-  - Fix: Add Profile/Settings page accessible from sidebar
+- [x] **9. No Account Management** ✅
+  - Built SettingsView: change display name, avatar URL, and password
+  - Password change re-authenticates with the current password first
+  - Accessible from the sidebar ("Settings") for all members
+  - Email remains read-only (changing it needs a confirm flow + `profiles.email` sync)
 
 - [ ] **10. RLS Policies Unverified**
   - "Admin functions" (`updateGameScore`, `calculatePickResults`) use anon key with no role check
