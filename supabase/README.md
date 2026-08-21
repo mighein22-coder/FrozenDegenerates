@@ -18,11 +18,16 @@ Migrations are written to be idempotent, so re-running one is safe.
 
 | Migration | Applied? | What it does |
 | --- | --- | --- |
-| `0001_lock_profile_privileged_columns.sql` | ☐ not yet | Stops a member from promoting themselves to `admin` by editing their own `profiles` row |
-| `0002_allow_signup_profile_insert.sql` | ☐ not yet | Lets a new user create their own `profiles` row at signup, without being able to set `role` |
+| `0001_lock_profile_privileged_columns.sql` | ☑ applied 2026-08-21 | Stops a member from promoting themselves to `admin` by editing their own `profiles` row |
+| `0002_allow_signup_profile_insert.sql` | ☑ applied 2026-08-21 | Lets a new user create their own `profiles` row at signup, without being able to set `role` |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in order — 0002 assumes 0001 is already in place.
+
+Both were verified after applying: `authenticated` now holds UPDATE only on
+`name`/`avatar` and INSERT only on `id`/`email`/`name`/`avatar` — `role` appears
+in neither — and the `Users can update own profile` policy carries a non-null
+`WITH CHECK`.
 
 ## Signup and email confirmation
 
