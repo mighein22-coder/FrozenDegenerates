@@ -3,6 +3,11 @@
 ## Verdict
 **Not quite ready for primetime as-is.** Functionally solid for core pick submission and scoring, but has 4 critical issues that must be fixed first.
 
+**Update 2026-08-21:** the RLS review in item 10 found four further critical
+issues (15–18). The database currently relies on the client to enforce scoring,
+pick secrecy and the weekly deadline; none of the three is enforced by a policy.
+Treat the pool's standings as tamperable until 15–18 are closed.
+
 ---
 
 ## CRITICAL — Fix Before Any Real Users Touch This
@@ -19,6 +24,42 @@
 
 - [x] **4. Picks View Shows Blank Screen on Load Failure** ✅
   - Added loading spinner and error state with retry button for Picks view
+
+- [ ] **15. Members Can Write Their Own Scores** 🔴
+  - `picks` UPDATE policy is `USING (auth.uid() = user_id)` with no `WITH CHECK`
+    and no column restriction, and `authenticated` holds UPDATE on every column.
+  - `getStandings()` sums `points_earned` and counts `result` straight off the
+    `picks` rows — so a member can set `points_earned` on their own picks and
+    take first place in one REST call. No exploit needed beyond the anon key.
+  - Fix: restrict client UPDATE on `picks` to `selected_team_id` / `confidence`;
+    `points_earned` and `result` should be service-role only.
+
+- [ ] **16. Anyone Can Rewrite Game Scores** 🔴
+  - `games` carries `Anyone can update games` (UPDATE, roles=`public`,
+    `USING (true)`) and `Anyone can insert games` (INSERT, roles=`public`,
+    `WITH CHECK (true)`). Not limited to members — the anon key is in the
+    browser bundle.
+  - Any visitor can set `home_score` / `away_score` / `status` on any game,
+    which then drives `calculatePickResults` and the standings.
+  - Fix: drop the public write policies; scores are written by the
+    `sync-scores` function, which should use the service role.
+
+- [ ] **17. Everyone's Picks Are Public Before the Deadline** 🔴
+  - `picks` SELECT policy is `USING (true)` for `public`, unconditionally.
+  - A member can read every other member's picks before Saturday's deadline,
+    which defeats the point of the pool.
+  - Fix: gate SELECT on other users' picks behind the week's deadline having
+    passed; own picks always visible.
+
+- [ ] **18. Pick Deadline Is Not Enforced Server-Side** 🔴
+  - `picks` UPDATE/DELETE policies carry no deadline condition, and `weeks`
+    has `Allow authenticated users to update weeks` (UPDATE, `USING (true)`)
+    plus `Anyone can insert weeks` (INSERT, roles=`public`).
+  - The 10 AM ET lock is enforced only in the client (`arePicksLocked` gating
+    the UI). A member can change picks after games start, and can flip a week's
+    status back to `OPEN`.
+  - Fix: add a deadline predicate to the `picks` write policies; restrict
+    `weeks` writes to the service role.
 
 ---
 
@@ -39,13 +80,23 @@
   - Only visible to users with role='admin'
   - Accessible from sidebar for admin users
 
-- [ ] **9. No Account Management**
-  - Users cannot change name, avatar, or password within the app
-  - Fix: Add Profile/Settings page accessible from sidebar
+- [x] **9. No Account Management** ✅
+  - Built SettingsView: change display name, avatar URL, and password
+  - Password change re-authenticates with the current password first
+  - Accessible from the sidebar ("Settings") for all members
+  - Email remains read-only (changing it needs a confirm flow + `profiles.email` sync)
 
-- [ ] **10. RLS Policies Unverified**
-  - "Admin functions" (`updateGameScore`, `calculatePickResults`) use anon key with no role check
-  - Action: Verify in Supabase dashboard that UPDATE on `games`/`picks` requires service role
+- [x] **10. RLS Policies Unverified** — verified 2026-08-21, and they do not hold ✅
+  - RLS is **enabled** on `profiles`, `picks`, `games`, `weeks` — but the policies
+    on top of it are permissive enough that it buys very little. Live state
+    confirmed by querying `pg_policies` / `pg_class` against the production
+    project. Findings are broken out as items 15–18 below.
+  - `anon` and `authenticated` hold blanket INSERT/UPDATE/SELECT on every
+    column of `profiles`; only the policies gate them.
+  - Confirmed both pending migrations' premises are accurate:
+    `profiles` has **no INSERT policy** (so `0002` is needed as written), and the
+    `Users can update own profile` policy has **`with_check = null`** (so `0001`
+    is needed as written). Neither is applied yet.
 
 ---
 

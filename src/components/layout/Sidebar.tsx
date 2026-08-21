@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Calendar, Trophy, LogOut, Grid3X3, Heart, ClipboardList, Settings } from 'lucide-react';
+import { LayoutDashboard, Calendar, Trophy, LogOut, Grid3X3, Heart, ClipboardList, Settings, UserCog } from 'lucide-react';
 
-type ViewState = 'LOGIN' | 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY' | 'ADMIN';
+type ViewState = 'LOGIN' | 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY' | 'SETTINGS' | 'ADMIN';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -21,6 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLog
     { id: 'TEAM_STATS' as ViewState, icon: Heart, label: 'Team Affinity', shortLabel: 'Affinity' },
     { id: 'STANDINGS' as ViewState, icon: Trophy, label: 'Standings', shortLabel: 'Standings' },
     { id: 'MY_HISTORY' as ViewState, icon: ClipboardList, label: 'My History', shortLabel: 'History' },
+    { id: 'SETTINGS' as ViewState, icon: UserCog, label: 'Settings', shortLabel: 'Settings' },
     ...(isAdmin ? [{ id: 'ADMIN' as ViewState, icon: Settings, label: 'Admin Panel', shortLabel: 'Admin' }] : []),
   ];
 

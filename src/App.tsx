@@ -16,12 +16,13 @@ import { ResultsView } from './components/views/ResultsView';
 import { TeamStatsView } from './components/views/TeamStatsView';
 import { MyHistoryView } from './components/views/MyHistoryView';
 import { AdminView } from './components/views/AdminView';
+import { SettingsView } from './components/views/SettingsView';
 
-type ViewState = 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY' | 'ADMIN';
+type ViewState = 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY' | 'SETTINGS' | 'ADMIN';
 
 function App() {
   // Authentication
-  const { user, profile, loading: authLoading, signIn, signOut } = useAuth();
+  const { user, profile, loading: authLoading, signIn, signOut, refreshProfile } = useAuth();
 
   // View state
   const [view, setView] = useState<ViewState>('DASHBOARD');
@@ -548,6 +549,22 @@ function App() {
             )}
             picksByWeek={myHistoryPicks}
             gamesByWeek={myHistoryGames}
+          />
+        )}
+
+        {view === 'SETTINGS' && user && (
+          <SettingsView
+            userId={user.id}
+            profile={profile}
+            onProfileUpdated={async () => {
+              await refreshProfile();
+              // Keep the league directory (matrix/affinity/admin lists) in sync
+              try {
+                setLeagueProfiles(await supabaseService.getProfiles());
+              } catch (error) {
+                console.error('Error reloading profiles:', error);
+              }
+            }}
           />
         )}
 

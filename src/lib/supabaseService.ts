@@ -307,6 +307,32 @@ export const supabaseService = {
   },
 
   /**
+   * Update the signed-in user's own profile (name / avatar).
+   * RLS restricts UPDATE on profiles to `auth.uid() = id`.
+   */
+  async updateProfile(
+    userId: string,
+    updates: { name?: string; avatar?: string | null }
+  ): Promise<Profile> {
+    const payload: Record<string, any> = {};
+    if (updates.name !== undefined) payload.name = updates.name.trim();
+    if (updates.avatar !== undefined) {
+      const avatar = updates.avatar?.trim();
+      payload.avatar = avatar ? avatar : null;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(payload)
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update profile: ${error.message}`);
+    return data;
+  },
+
+  /**
    * Update game scores (admin function)
    */
   async updateGameScore(

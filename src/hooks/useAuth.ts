@@ -102,14 +102,15 @@ export function useAuth() {
       if (error) throw error;
       if (!data.user) throw new Error('User creation failed');
 
-      // Create profile
+      // Create profile. `role` is deliberately not sent: clients have no INSERT
+      // privilege on that column (see migration 0002), so it falls through to
+      // its DEFAULT of 'member'. Sending it would fail the insert outright.
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
           id: data.user.id,
           email: email.trim().toLowerCase(),
-          name,
-          role: 'member'
+          name: name.trim()
         });
 
       if (profileError) throw profileError;
@@ -120,6 +121,15 @@ export function useAuth() {
     }
   };
 
+  /**
+   * Re-read the current user's profile from the database. Call after a profile
+   * update so the sidebar/dashboard pick up the new name or avatar immediately.
+   */
+  const refreshProfile = async () => {
+    if (!user) return;
+    await loadProfile(user.id);
+  };
+
   return {
     user,
     profile,
@@ -127,6 +137,7 @@ export function useAuth() {
     signIn,
     signOut,
     signUp,
+    refreshProfile,
     isAuthenticated: !!user,
     isAdmin: profile?.role === 'admin'
   };
