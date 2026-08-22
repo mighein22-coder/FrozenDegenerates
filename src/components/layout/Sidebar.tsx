@@ -1,29 +1,21 @@
 import React from 'react';
-import { LayoutDashboard, Calendar, Trophy, LogOut, Grid3X3, Heart, ClipboardList, Settings, UserCog } from 'lucide-react';
-
-type ViewState = 'LOGIN' | 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY' | 'SETTINGS' | 'ADMIN';
+import { NavLink } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
+import { NAV_ROUTES } from '../../routes';
 
 interface SidebarProps {
-  currentView: ViewState;
-  onNavigate: (view: ViewState) => void;
   onLogout: () => void;
   isAdmin?: boolean;
 }
 
 /**
  * Sidebar navigation component
+ *
+ * Active state comes from the URL via NavLink rather than a `currentView` prop,
+ * so navigation, the browser's back button and a pasted link all agree.
  */
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout, isAdmin = false }) => {
-  const navItems = [
-    { id: 'DASHBOARD' as ViewState, icon: LayoutDashboard, label: 'Dashboard', shortLabel: 'Dashboard' },
-    { id: 'PICKS' as ViewState, icon: Calendar, label: 'Saturday Picks', shortLabel: 'Picks' },
-    { id: 'RESULTS' as ViewState, icon: Grid3X3, label: 'League Matrix', shortLabel: 'Matrix' },
-    { id: 'TEAM_STATS' as ViewState, icon: Heart, label: 'Team Affinity', shortLabel: 'Affinity' },
-    { id: 'STANDINGS' as ViewState, icon: Trophy, label: 'Standings', shortLabel: 'Standings' },
-    { id: 'MY_HISTORY' as ViewState, icon: ClipboardList, label: 'My History', shortLabel: 'History' },
-    { id: 'SETTINGS' as ViewState, icon: UserCog, label: 'Settings', shortLabel: 'Settings' },
-    ...(isAdmin ? [{ id: 'ADMIN' as ViewState, icon: Settings, label: 'Admin Panel', shortLabel: 'Admin' }] : []),
-  ];
+export const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin = false }) => {
+  const navItems = NAV_ROUTES.filter(route => !route.adminOnly || isAdmin);
 
   return (
     <>
@@ -39,23 +31,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLog
 
         {/* Navigation */}
         <nav className="flex-1 py-6 px-3 space-y-2">
-          {navItems.map(({ id, icon: Icon, label }) => {
-            const isActive = currentView === id;
-            return (
-              <button
-                key={id}
-                onClick={() => onNavigate(id)}
-                className={`w-full flex items-center gap-3 px-3 lg:px-4 py-3 rounded-lg transition-all duration-200 group ${
+          {navItems.map(({ path, icon: Icon, label }) => (
+            <NavLink
+              key={path}
+              to={path}
+              end={path === '/'}
+              className={({ isActive }) =>
+                `w-full flex items-center gap-3 px-3 lg:px-4 py-3 rounded-lg transition-all duration-200 group ${
                   isActive
                     ? 'bg-ice-500/10 text-ice-400'
                     : 'hover:bg-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <Icon size={20} className={isActive ? 'stroke-[2.5]' : ''} />
-                <span className="font-medium hidden lg:block">{label}</span>
-              </button>
-            );
-          })}
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon size={20} className={isActive ? 'stroke-[2.5]' : ''} />
+                  <span className="font-medium hidden lg:block">{label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
         </nav>
 
         {/* Logout */}
@@ -72,21 +68,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLog
 
       {/* Bottom nav — mobile only */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-800 flex items-center">
-        {navItems.map(({ id, icon: Icon, shortLabel }) => {
-          const isActive = currentView === id;
-          return (
-            <button
-              key={id}
-              onClick={() => onNavigate(id)}
-              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
+        {navItems.map(({ path, icon: Icon, shortLabel }) => (
+          <NavLink
+            key={path}
+            to={path}
+            end={path === '/'}
+            className={({ isActive }) =>
+              `flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
                 isActive ? 'text-ice-400' : 'text-slate-500'
-              }`}
-            >
-              <Icon size={18} className={isActive ? 'stroke-[2.5]' : ''} />
-              <span className="text-[10px] font-medium">{shortLabel}</span>
-            </button>
-          );
-        })}
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Icon size={18} className={isActive ? 'stroke-[2.5]' : ''} />
+                <span className="text-[10px] font-medium">{shortLabel}</span>
+              </>
+            )}
+          </NavLink>
+        ))}
         <button
           onClick={onLogout}
           className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-slate-500 transition-colors"

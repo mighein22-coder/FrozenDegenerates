@@ -51,6 +51,11 @@ Nothing currently in flight.
       (`supabase/migrations/0004_enforce_deadline.sql`).
 - [x] Season segments — three auto-computed thirds with their own standings,
       selectable alongside the cumulative season table. No schema change.
+- [x] URL routing. Views are driven by the URL, so every screen is linkable
+      and the back button works. `/auth/callback` is now a real route.
+- [x] Allowlist `/auth/callback` in Supabase → Authentication → URL
+      Configuration. Done 2026-08-22, and password reset verified end to end
+      against the live site. No app change could substitute for this.
 - [x] Fix the broken password reset. `LoginView` sent users to
       `/auth/callback`, which nothing handled, so reset links dead-ended with
       no way to choose a new password. `AuthCallbackView` now reads the
@@ -85,11 +90,6 @@ Nothing currently in flight.
 
 ### Planned features
 
-- [ ] URL routing. Views still live in component state, so nothing is
-      linkable and the back button does not work. The `/auth/callback` half of
-      this is already fixed — `AuthCallbackView` renders off the load-time auth
-      snapshot rather than a route — so routing is now a usability change
-      rather than a bug fix.
 - [ ] Automated score sync on a schedule. Scores only move today when a human
       opens the app.
 - [ ] Self-serve signup gated by invites.

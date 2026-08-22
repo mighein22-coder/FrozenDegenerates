@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { supabaseService } from './lib/supabaseService';
 import { isAuthCallback } from './lib/authRedirect';
@@ -22,15 +23,27 @@ import { TeamStatsView } from './components/views/TeamStatsView';
 import { MyHistoryView } from './components/views/MyHistoryView';
 import { AdminView } from './components/views/AdminView';
 import { SettingsView } from './components/views/SettingsView';
-
-type ViewState = 'DASHBOARD' | 'PICKS' | 'STANDINGS' | 'RESULTS' | 'TEAM_STATS' | 'MY_HISTORY' | 'SETTINGS' | 'ADMIN';
+import { PUBLIC_ROUTES } from './routes';
 
 function App() {
   // Authentication
   const { user, profile, loading: authLoading, signIn, signOut, refreshProfile } = useAuth();
 
-  // View state
-  const [view, setView] = useState<ViewState>('DASHBOARD');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  /** Which route is showing — drives the per-view data loaders. */
+  const path = location.pathname;
+
+  // The standings segment and the matrix week live in the query string rather
+  // than component state, so both are linkable and survive a refresh.
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const setParam = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set(key, value);
+    setSearchParams(next, { replace: true });
+  };
 
   // True for the lifetime of an emailed auth link, until the user leaves the
   // callback screen. Seeded once from the load-time snapshot.
@@ -39,7 +52,6 @@ function App() {
   // Data state
   const [currentWeek, setCurrentWeek] = useState<Week | null>(null);
   const [allWeeks, setAllWeeks] = useState<Week[]>([]);
-  const [selectedResultsWeekId, setSelectedResultsWeekId] = useState<string>('');
   const [weekGames, setWeekGames] = useState<Game[]>([]);
   const [currentPicks, setCurrentPicks] = useState<Partial<Pick>[]>([]);
   const [leagueProfiles, setLeagueProfiles] = useState<Profile[]>([]);
@@ -48,9 +60,7 @@ function App() {
   // table are derived from these, so switching segment costs no round-trip.
   const [allPicks, setAllPicks] = useState<Pick[]>([]);
 
-  // null = Full Season. Defaults to whichever segment the season is currently in.
   const segments = useMemo(() => getSegments(), []);
-  const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
 
   // UI state
   const [loadingSchedule, setLoadingSchedule] = useState(false);
@@ -196,13 +206,39 @@ function App() {
     loadPicks();
   }, [user, currentWeek]);
 
+  // Available weeks for Results view - only completed weeks + current week if past deadline
+  const availableResultsWeeks = useMemo(() => {
+    return allWeeks.filter(week => {
+      // Always show completed weeks
+      if (week.status === 'COMPLETED') return true;
+
+      // For open/locked weeks, only show if past deadline (Saturday 10 AM ET)
+      if (week.status === 'OPEN' || week.status === 'LOCKED') {
+        return arePicksLocked(week.startDate);
+      }
+
+      return false;
+    });
+  }, [allWeeks]);
+
+  // Which week the matrix shows: ?week= when it names a viewable week, else the
+  // most recent. Validating against the list means a stale or hand-edited link
+  // falls back rather than rendering an empty grid.
+  const selectedResultsWeekId = useMemo(() => {
+    const requested = searchParams.get('week');
+    if (requested && availableResultsWeeks.some(w => w.id === requested)) return requested;
+    return availableResultsWeeks[0]?.id ?? '';
+  }, [searchParams, availableResultsWeeks]);
+
+  const setSelectedResultsWeekId = (weekId: string) => setParam('week', weekId);
+
   // Load data for results view (uses selected week)
   const [resultsWeekGames, setResultsWeekGames] = useState<Game[]>([]);
   const [resultsWeekPicks, setResultsWeekPicks] = useState<Pick[]>([]);
   const [syncingScores, setSyncingScores] = useState(false);
 
   useEffect(() => {
-    if (view !== 'RESULTS' || !selectedResultsWeekId) return;
+    if (path !== '/matrix' || !selectedResultsWeekId) return;
 
     const loadResultsData = async () => {
       try {
@@ -235,7 +271,7 @@ function App() {
     };
 
     loadResultsData();
-  }, [view, selectedResultsWeekId, allWeeks]);
+  }, [path, selectedResultsWeekId, allWeeks]);
 
   // Load picks from completed weeks only for team stats view
   const [teamStatsPicks, setTeamStatsPicks] = useState<Pick[]>([]);
@@ -245,7 +281,7 @@ function App() {
   const [myHistoryGames, setMyHistoryGames] = useState<Record<string, Game[]>>({});
 
   useEffect(() => {
-    if (view !== 'TEAM_STATS') return;
+    if (path !== '/affinity') return;
 
     const loadCompletedWeeksPicks = async () => {
       try {
@@ -261,11 +297,11 @@ function App() {
     };
 
     loadCompletedWeeksPicks();
-  }, [view, allWeeks]);
+  }, [path, allWeeks]);
 
   // Load picks and games for all locked/completed weeks for My History view
   useEffect(() => {
-    if (view !== 'MY_HISTORY' || !user) return;
+    if (path !== '/history' || !user) return;
 
     const loadMyHistory = async () => {
       try {
@@ -291,7 +327,7 @@ function App() {
     };
 
     loadMyHistory();
-  }, [view, allWeeks, user]);
+  }, [path, allWeeks, user]);
 
   // Handlers
   const handleSelectTeam = (gameId: string, teamId: string) => {
@@ -375,7 +411,7 @@ function App() {
   const handleLogout = async () => {
     try {
       await signOut();
-      setView('DASHBOARD');
+      navigate('/', { replace: true });
       // Clear all data
       setCurrentWeek(null);
       setWeekGames([]);
@@ -399,6 +435,21 @@ function App() {
     [leagueProfiles, allPicks, currentWeek]
   );
 
+  // Which scope the standings show: ?segment=1|2|3, ?segment=season, or — with
+  // no parameter — whichever segment the season is currently in.
+  const selectedSegment = useMemo(() => {
+    const requested = searchParams.get('segment');
+    if (requested === 'season') return null;
+
+    const asNumber = Number(requested);
+    if (requested !== null && segments.some(s => s.number === asNumber)) return asNumber;
+
+    return getCurrentSegment(currentWeek?.startDate, segments)?.number ?? null;
+  }, [searchParams, segments, currentWeek]);
+
+  const setSelectedSegment = (segment: number | null) =>
+    setParam('segment', segment === null ? 'season' : String(segment));
+
   const scopedStandings = useMemo(
     () =>
       selectedSegment === null
@@ -410,13 +461,6 @@ function App() {
     [selectedSegment, seasonStandings, leagueProfiles, allPicks, currentWeek]
   );
 
-  // Open the standings on the segment currently being played, once weeks load
-  const defaultSegmentApplied = useRef(false);
-  useEffect(() => {
-    if (defaultSegmentApplied.current || !currentWeek) return;
-    defaultSegmentApplied.current = true;
-    setSelectedSegment(getCurrentSegment(currentWeek.startDate, segments)?.number ?? null);
-  }, [currentWeek, segments]);
 
   // Validation
   const isPickSheetValid = useMemo(() => {
@@ -425,21 +469,6 @@ function App() {
     return [1, 2, 3, 4, 5].every(v => confidences.has(v));
   }, [currentPicks]);
 
-  // Available weeks for Results view - only completed weeks + current week if past deadline
-  const availableResultsWeeks = useMemo(() => {
-    return allWeeks.filter(week => {
-      // Always show completed weeks
-      if (week.status === 'COMPLETED') return true;
-
-      // For open/locked weeks, only show if past deadline (Saturday 10 AM ET)
-      if (week.status === 'OPEN' || week.status === 'LOCKED') {
-        return arePicksLocked(week.startDate);
-      }
-
-      return false;
-    });
-  }, [allWeeks]);
-
   // isLocked for selected results week (not the current picks week)
   const isResultsWeekLocked = useMemo(() => {
     const selectedWeek = allWeeks.find(w => w.id === selectedResultsWeekId);
@@ -447,32 +476,22 @@ function App() {
     return arePicksLocked(selectedWeek.startDate);
   }, [allWeeks, selectedResultsWeekId]);
 
-  // Set default selected results week to most recent available week
-  useEffect(() => {
-    if (availableResultsWeeks.length > 0 && !selectedResultsWeekId) {
-      setSelectedResultsWeekId(availableResultsWeeks[0].id);
-    }
-    // If current selection is not in available weeks, reset to first available
-    if (selectedResultsWeekId && availableResultsWeeks.length > 0) {
-      const isValid = availableResultsWeeks.some(w => w.id === selectedResultsWeekId);
-      if (!isValid) {
-        setSelectedResultsWeekId(availableResultsWeeks[0].id);
-      }
-    }
-  }, [availableResultsWeeks, selectedResultsWeekId]);
-
-  // Emailed auth links land here. This must be checked before the two gates
-  // below: during a password recovery a session already exists, so the authed
-  // shell would render the dashboard before the user could set a password.
-  if (handlingAuthCallback) {
+  // The auth callback owns the whole screen and is checked before anything
+  // else. A recovery link *does* establish a session, so without this the
+  // authed shell would render around it — sidebar and all — or redirect past it
+  // before the user could choose a new password.
+  //
+  // Matched on the path *or* on the load-time snapshot: if the Supabase
+  // redirect allowlist ever sends a link somewhere other than /auth/callback,
+  // the parameters still arrive and still need handling.
+  if (path === PUBLIC_ROUTES.authCallback || handlingAuthCallback) {
     return (
       <AuthCallbackView
         onDone={() => {
-          // Back to the root, dropping the PKCE `code` and leaving the
-          // /auth/callback path behind. The fragment is already gone —
-          // supabase-js consumed it during init.
-          window.history.replaceState({}, '', '/');
           setHandlingAuthCallback(false);
+          // Leaves /auth/callback and drops the PKCE `code`. The fragment is
+          // already gone — supabase-js consumed it during init.
+          navigate('/', { replace: true });
         }}
       />
     );
@@ -487,15 +506,25 @@ function App() {
     );
   }
 
-  // Login view
+  // Signed out
   if (!user) {
     return <LoginView onLogin={signIn} />;
   }
 
+  const leagueUsers = leagueProfiles.map(p => ({
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    avatar: p.avatar || '',
+    role: p.role
+  }));
+
+  const isAdmin = profile?.role === 'admin';
+
   // Main app
   return (
     <div className="min-h-screen bg-slate-950 flex text-slate-200 font-sans selection:bg-ice-500/30">
-      <Sidebar currentView={view} onNavigate={setView} onLogout={handleLogout} isAdmin={profile?.role === 'admin'} />
+      <Sidebar onLogout={handleLogout} isAdmin={isAdmin} />
 
       <main className="flex-1 md:ml-20 lg:ml-64 p-4 lg:p-10 pb-24 md:pb-4 lg:pb-10 max-w-7xl mx-auto w-full">
         {/* Data Load Error Banner */}
@@ -514,45 +543,45 @@ function App() {
           </div>
         )}
 
-        {view === 'DASHBOARD' && (
-          <DashboardView
-            user={profile}
-            standings={seasonStandings}
-            currentPicks={currentPicks}
-            isLocked={isLocked}
-            onNavigate={setView}
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <DashboardView
+                user={profile}
+                standings={seasonStandings}
+                currentPicks={currentPicks}
+                isLocked={isLocked}
+              />
+            }
           />
-        )}
 
-        {view === 'PICKS' && (
-          currentWeek ? (
-            <PicksView
-              selectedWeekId={currentWeek.id}
-              isLocked={isLocked}
-              timeLeft={timeLeft}
-              currentPicks={currentPicks}
-              saveStatus={saveStatus}
-              errorMessage={errorMessage}
-              weekGames={weekGames}
-              handleSelectTeam={handleSelectTeam}
-              handleSetConfidence={handleSetConfidence}
-              handleSubmitPicks={handleSubmitPicks}
-              isPickSheetValid={isPickSheetValid}
-              loadingSchedule={loadingSchedule}
-              sourceUrl={sourceUrl}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-              {authLoading ? (
-                <>
-                  <div className="w-8 h-8 border-4 border-ice-500/20 border-t-ice-500 rounded-full animate-spin"></div>
-                  <p className="text-slate-400">Loading your picks...</p>
-                </>
+          <Route
+            path="/picks"
+            element={
+              currentWeek ? (
+                <PicksView
+                  selectedWeekId={currentWeek.id}
+                  isLocked={isLocked}
+                  timeLeft={timeLeft}
+                  currentPicks={currentPicks}
+                  saveStatus={saveStatus}
+                  errorMessage={errorMessage}
+                  weekGames={weekGames}
+                  handleSelectTeam={handleSelectTeam}
+                  handleSetConfidence={handleSetConfidence}
+                  handleSubmitPicks={handleSubmitPicks}
+                  isPickSheetValid={isPickSheetValid}
+                  loadingSchedule={loadingSchedule}
+                  sourceUrl={sourceUrl}
+                />
               ) : (
-                <>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
                   <div className="text-center space-y-2">
                     <p className="text-red-400 font-semibold">Failed to Load Picks</p>
-                    <p className="text-slate-400 text-sm">Unable to load this week's schedule. Please try refreshing the page.</p>
+                    <p className="text-slate-400 text-sm">
+                      Unable to load this week's schedule. Please try refreshing the page.
+                    </p>
                   </div>
                   <button
                     onClick={() => window.location.reload()}
@@ -560,99 +589,95 @@ function App() {
                   >
                     Refresh Page
                   </button>
-                </>
-              )}
-            </div>
-          )
-        )}
-
-        {view === 'STANDINGS' && (
-          <StandingsView
-            standings={scopedStandings}
-            currentUser={profile ? { ...profile, role: profile.role as 'admin' | 'member' } : null}
-            segments={segments}
-            selectedSegment={selectedSegment}
-            onSelectSegment={setSelectedSegment}
+                </div>
+              )
+            }
           />
-        )}
 
-        {view === 'RESULTS' && (
-          <ResultsView
-            selectedWeekId={selectedResultsWeekId}
-            availableWeeks={availableResultsWeeks}
-            onWeekSelect={setSelectedResultsWeekId}
-            isLocked={isResultsWeekLocked}
-            weekGames={resultsWeekGames}
-            leagueUsers={leagueProfiles.map(p => ({
-              id: p.id,
-              name: p.name,
-              email: p.email,
-              avatar: p.avatar || '',
-              role: p.role
-            }))}
-            leaguePicks={resultsWeekPicks}
-            syncingScores={syncingScores}
+          <Route
+            path="/standings"
+            element={
+              <StandingsView
+                standings={scopedStandings}
+                currentUser={profile ? { ...profile, role: profile.role as 'admin' | 'member' } : null}
+                segments={segments}
+                selectedSegment={selectedSegment}
+                onSelectSegment={setSelectedSegment}
+              />
+            }
           />
-        )}
 
-        {view === 'TEAM_STATS' && (
-          <TeamStatsView
-            leagueUsers={leagueProfiles.map(p => ({
-              id: p.id,
-              name: p.name,
-              email: p.email,
-              avatar: p.avatar || '',
-              role: p.role
-            }))}
-            allPicks={teamStatsPicks}
+          <Route
+            path="/matrix"
+            element={
+              <ResultsView
+                selectedWeekId={selectedResultsWeekId}
+                availableWeeks={availableResultsWeeks}
+                onWeekSelect={setSelectedResultsWeekId}
+                isLocked={isResultsWeekLocked}
+                weekGames={resultsWeekGames}
+                leagueUsers={leagueUsers}
+                leaguePicks={resultsWeekPicks}
+                syncingScores={syncingScores}
+              />
+            }
           />
-        )}
 
-        {view === 'MY_HISTORY' && user && (
-          <MyHistoryView
-            currentUserId={user.id}
-            relevantWeeks={allWeeks.filter(
-              w => w.status === 'LOCKED' || w.status === 'COMPLETED'
-            )}
-            picksByWeek={myHistoryPicks}
-            gamesByWeek={myHistoryGames}
+          <Route
+            path="/affinity"
+            element={<TeamStatsView leagueUsers={leagueUsers} allPicks={teamStatsPicks} />}
           />
-        )}
 
-        {view === 'SETTINGS' && user && (
-          <SettingsView
-            userId={user.id}
-            profile={profile}
-            onProfileUpdated={async () => {
-              await refreshProfile();
-              // Keep the league directory (matrix/affinity/admin lists) in sync
-              try {
-                setLeagueProfiles(await supabaseService.getProfiles());
-              } catch (error) {
-                console.error('Error reloading profiles:', error);
-              }
-            }}
+          <Route
+            path="/history"
+            element={
+              <MyHistoryView
+                currentUserId={user.id}
+                relevantWeeks={allWeeks.filter(
+                  w => w.status === 'LOCKED' || w.status === 'COMPLETED'
+                )}
+                picksByWeek={myHistoryPicks}
+                gamesByWeek={myHistoryGames}
+              />
+            }
           />
-        )}
 
-        {view === 'ADMIN' && profile?.role === 'admin' && (
-          <AdminView
-            allWeeks={allWeeks}
-            leagueUsers={leagueProfiles.map(p => ({
-              id: p.id,
-              name: p.name,
-              email: p.email,
-              avatar: p.avatar || '',
-              role: p.role
-            }))}
+          <Route
+            path="/settings"
+            element={
+              <SettingsView
+                userId={user.id}
+                profile={profile}
+                onProfileUpdated={async () => {
+                  await refreshProfile();
+                  // Keep the league directory (matrix/affinity/admin lists) in sync
+                  try {
+                    setLeagueProfiles(await supabaseService.getProfiles());
+                  } catch (error) {
+                    console.error('Error reloading profiles:', error);
+                  }
+                }}
+              />
+            }
           />
-        )}
 
-        {view === 'ADMIN' && profile?.role !== 'admin' && (
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <p className="text-red-400">Access denied. Admin privileges required.</p>
-          </div>
-        )}
+          <Route
+            path="/admin"
+            element={
+              isAdmin ? (
+                <AdminView allWeeks={allWeeks} leagueUsers={leagueUsers} />
+              ) : (
+                <div className="flex items-center justify-center min-h-[60vh]">
+                  <p className="text-red-400">Access denied. Admin privileges required.</p>
+                </div>
+              )
+            }
+          />
+
+          {/* Signed-in users have no use for the login screen */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
     </div>
   );
