@@ -9,7 +9,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Type exports for Supabase tables
+/**
+ * Row types — the exact snake_case shapes stored in Postgres.
+ *
+ * These are deliberately named `*Row` so they cannot be mistaken for the
+ * camelCase application types in `src/types.ts`. Confusing the two is what let
+ * `getCurrentWeek` return a raw row while `getAllWeeks` returned a mapped one,
+ * both typed as `Week`. Map rows to app types at the service boundary; do not
+ * let a `*Row` escape into a component.
+ */
 export type Profile = {
   id: string;
   email: string;
@@ -20,7 +28,7 @@ export type Profile = {
   updated_at: string;
 };
 
-export type Week = {
+export type WeekRow = {
   id: string;
   week_number: number;
   saturday_date: string;
@@ -28,7 +36,7 @@ export type Week = {
   created_at: string;
 };
 
-export type Game = {
+export type GameRow = {
   id: string;
   week_id: string;
   nhl_game_id: number | null;
@@ -42,7 +50,7 @@ export type Game = {
   updated_at: string;
 };
 
-export type Pick = {
+export type PickRow = {
   id: string;
   user_id: string;
   week_id: string;

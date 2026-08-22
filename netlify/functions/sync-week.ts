@@ -51,6 +51,14 @@ const handler: Handler = async (event: HandlerEvent) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'weekId is required' }) };
     }
 
+    // The date is sliced out of this and interpolated into the NHL API URL
+    if (!/^week-\d{4}-\d{2}-\d{2}$/.test(weekId)) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'weekId must be formatted week-YYYY-MM-DD' })
+      };
+    }
+
     const dateStr = weekId.replace('week-', '');
     const errors: string[] = [];
     let gamesUpdated = 0;

@@ -25,6 +25,14 @@ const handler: Handler = async (event: HandlerEvent) => {
       };
     }
 
+    // Validate before interpolating into the NHL API URL
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'dateStr must be formatted YYYY-MM-DD' })
+      };
+    }
+
     // Fetch schedule from NHL API
     const url = `https://api-web.nhle.com/v1/schedule/${dateStr}`;
     const response = await fetch(url);

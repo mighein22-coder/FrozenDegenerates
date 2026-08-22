@@ -1,6 +1,65 @@
-import { supabase, type Profile, type Week, type Game, type Pick } from './supabase';
-import { getTargetSaturdayDate, getPickDeadline, arePicksLocked, isAfterSunday4AM } from './timezone';
-import type { User, StandingsRow } from '../types';
+import { supabase, type Profile, type WeekRow, type GameRow, type PickRow } from './supabase';
+import { getTargetSaturdayDate, arePicksLocked } from './timezone';
+import { rankStandings } from './standings';
+import type { User, StandingsRow, Week, Game, Pick } from '../types';
+
+/**
+ * Maps a `weeks` row (snake_case, as stored) to the camelCase `Week` app type.
+ *
+ * Every week-returning method goes through this. Previously `getCurrentWeek`
+ * returned the raw row while `getAllWeeks` returned the mapped shape, even
+ * though both were typed as `Week` — so callers reading `startDate` off the
+ * current week silently got `undefined` and a week that never locked.
+ */
+function mapWeek(row: WeekRow): Week {
+  return {
+    id: row.id,
+    number: row.week_number,
+    startDate: row.saturday_date,
+    endDate: row.saturday_date, // Single-day week; kept for Week type compatibility
+    status: row.status
+  };
+}
+
+/** Maps a `games` row to the camelCase `Game` app type. */
+function mapGame(row: GameRow): Game {
+  return {
+    id: row.id,
+    weekId: row.week_id,
+    homeTeamId: row.home_team_id,
+    awayTeamId: row.away_team_id,
+    startTime: row.start_time,
+    status: row.status,
+    // Postgres nulls become undefined so optional app fields behave as expected
+    nhlGameId: row.nhl_game_id ?? undefined,
+    homeScore: row.home_score ?? undefined,
+    awayScore: row.away_score ?? undefined
+  };
+}
+
+/** Maps a `picks` row to the camelCase `Pick` app type. */
+function mapPick(row: PickRow): Pick {
+  return {
+    userId: row.user_id,
+    weekId: row.week_id,
+    gameId: row.game_id,
+    selectedTeamId: row.selected_team_id,
+    confidence: row.confidence,
+    pointsEarned: row.points_earned,
+    result: row.result
+  };
+}
+
+/** Groups rows by their `weekId`, seeding every requested week so callers get a complete map. */
+function groupByWeek<T extends { weekId: string }>(
+  rows: T[],
+  weekIds: string[]
+): Record<string, T[]> {
+  const grouped: Record<string, T[]> = {};
+  for (const weekId of weekIds) grouped[weekId] = [];
+  for (const row of rows) (grouped[row.weekId] ??= []).push(row);
+  return grouped;
+}
 
 /**
  * Supabase Service Layer
@@ -61,7 +120,7 @@ export const supabaseService = {
       }
     }
 
-    return week!;
+    return mapWeek(week!);
   },
 
   /**
@@ -76,25 +135,32 @@ export const supabaseService = {
 
     if (error) throw new Error(`Failed to get games: ${error.message}`);
 
-    // Map snake_case from Supabase to camelCase for TypeScript
-    return (data || []).map(game => ({
-      id: game.id,
-      weekId: game.week_id,
-      nhlGameId: game.nhl_game_id,
-      homeTeamId: game.home_team_id,
-      awayTeamId: game.away_team_id,
-      startTime: game.start_time,
-      status: game.status,
-      homeScore: game.home_score,
-      awayScore: game.away_score
-    }));
+    return (data || []).map(mapGame);
+  },
+
+  /**
+   * Get games for several weeks in a single query, grouped by week id.
+   * Replaces per-week round-trips in the history view.
+   */
+  async getGamesForWeeks(weekIds: string[]): Promise<Record<string, Game[]>> {
+    if (weekIds.length === 0) return {};
+
+    const { data, error } = await supabase
+      .from('games')
+      .select('*')
+      .in('week_id', weekIds)
+      .order('start_time', { ascending: true });
+
+    if (error) throw new Error(`Failed to get games: ${error.message}`);
+
+    return groupByWeek((data || []).map(mapGame), weekIds);
   },
 
   /**
    * Save games to database (admin function)
    * Guards against duplicate inserts by checking if games already exist for the week
    */
-  async saveGames(weekId: string, games: Partial<Game>[]): Promise<void> {
+  async saveGames(weekId: string, games: Partial<GameRow>[]): Promise<void> {
     // Check if games already exist for this week to prevent duplicate inserts
     const { data: existing } = await supabase
       .from('games')
@@ -126,16 +192,7 @@ export const supabaseService = {
 
     if (error) throw new Error(`Failed to get user picks: ${error.message}`);
 
-    // Map snake_case from Supabase to camelCase for TypeScript
-    return (data || []).map(pick => ({
-      userId: pick.user_id,
-      weekId: pick.week_id,
-      gameId: pick.game_id,
-      selectedTeamId: pick.selected_team_id,
-      confidence: pick.confidence,
-      pointsEarned: pick.points_earned,
-      result: pick.result
-    }));
+    return (data || []).map(mapPick);
   },
 
   /**
@@ -148,16 +205,24 @@ export const supabaseService = {
     const { data, error } = await query;
     if (error) throw new Error(`Failed to get all picks: ${error.message}`);
 
-    // Map snake_case from Supabase to camelCase for TypeScript
-    return (data || []).map(pick => ({
-      userId: pick.user_id,
-      weekId: pick.week_id,
-      gameId: pick.game_id,
-      selectedTeamId: pick.selected_team_id,
-      confidence: pick.confidence,
-      pointsEarned: pick.points_earned,
-      result: pick.result
-    }));
+    return (data || []).map(mapPick);
+  },
+
+  /**
+   * Get picks for several weeks in a single query.
+   * Replaces per-week round-trips in the team-stats and history views.
+   */
+  async getPicksForWeeks(weekIds: string[]): Promise<Pick[]> {
+    if (weekIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('picks')
+      .select('*')
+      .in('week_id', weekIds);
+
+    if (error) throw new Error(`Failed to get picks: ${error.message}`);
+
+    return (data || []).map(mapPick);
   },
 
   /**
@@ -288,10 +353,7 @@ export const supabaseService = {
       };
     });
 
-    // Sort by total points (descending) and assign ranks
-    return standings
-      .sort((a, b) => b.totalPoints - a.totalPoints)
-      .map((row, idx) => ({ ...row, rank: idx + 1 }));
+    return rankStandings(standings, 'totalPoints');
   },
 
   /**
@@ -332,82 +394,14 @@ export const supabaseService = {
     return data;
   },
 
-  /**
-   * Update game scores (admin function)
-   */
-  async updateGameScore(
-    gameId: string,
-    homeScore: number,
-    awayScore: number,
-    status: 'SCHEDULED' | 'LIVE' | 'FINAL'
-  ): Promise<void> {
-    const { error } = await supabase
-      .from('games')
-      .update({ home_score: homeScore, away_score: awayScore, status })
-      .eq('id', gameId);
 
-    if (error) throw new Error(`Failed to update game: ${error.message}`);
-
-    // If game is final, calculate results for all picks on this game
-    if (status === 'FINAL') {
-      await this.calculatePickResults(gameId, homeScore, awayScore);
-    }
-  },
 
   /**
-   * Calculate pick results for a specific game
-   */
-  async calculatePickResults(gameId: string, homeScore: number, awayScore: number): Promise<void> {
-    // Get the game to find winner
-    const { data: game } = await supabase
-      .from('games')
-      .select('*')
-      .eq('id', gameId)
-      .single();
-
-    if (!game) return;
-
-    const winnerTeamId = homeScore > awayScore ? game.home_team_id : game.away_team_id;
-
-    // Get all picks for this game
-    const { data: picks } = await supabase
-      .from('picks')
-      .select('*')
-      .eq('game_id', gameId);
-
-    if (!picks) return;
-
-    // Update each pick with result and points
-    for (const pick of picks) {
-      const isWin = pick.selected_team_id === winnerTeamId;
-      await supabase
-        .from('picks')
-        .update({
-          result: isWin ? 'WIN' : 'LOSS',
-          points_earned: isWin ? pick.confidence : 0
-        })
-        .eq('id', pick.id);
-    }
-  },
-
-  /**
-   * Check if picks are locked for a week
-   */
-  async isPicksLocked(weekId: string): Promise<boolean> {
-    const { data: week } = await supabase
-      .from('weeks')
-      .select('saturday_date')
-      .eq('id', weekId)
-      .single();
-
-    if (!week) return true;
-    return arePicksLocked(week.saturday_date);
-  },
-
-  /**
-   * Get recent past weeks that have passed their pick deadline.
-   * Uses a date range (last 14 days) instead of status filter so COMPLETED weeks
-   * are still included — allowing the server-side sync to resolve any PENDING picks.
+   * Get recent past weeks that are past their pick deadline but not yet COMPLETED,
+   * so the server-side sync can resolve any still-PENDING picks.
+   *
+   * COMPLETED weeks are excluded: sync-week only touches non-FINAL games and
+   * PENDING picks, so re-syncing a completed week can never change anything.
    */
   async getRecentIncompleteWeeks(currentWeekId: string): Promise<string[]> {
     const twoWeeksAgo = new Date();
@@ -419,6 +413,7 @@ export const supabaseService = {
       .from('weeks')
       .select('id, saturday_date, status')
       .neq('id', currentWeekId)
+      .neq('status', 'COMPLETED')
       .gte('saturday_date', cutoff)
       .lt('saturday_date', currentDateStr)
       .order('saturday_date', { ascending: false })
@@ -443,35 +438,9 @@ export const supabaseService = {
 
     if (error) throw new Error(`Failed to get weeks: ${error.message}`);
 
-    return (data || []).map(week => ({
-      id: week.id,
-      number: week.week_number,
-      startDate: week.saturday_date,
-      endDate: week.saturday_date, // For Week type compatibility
-      status: week.status
-    }));
+    return (data || []).map(mapWeek);
   },
 
-  /**
-   * Get a specific week by ID
-   */
-  async getWeekById(weekId: string): Promise<Week | null> {
-    const { data, error } = await supabase
-      .from('weeks')
-      .select('*')
-      .eq('id', weekId)
-      .single();
-
-    if (error) return null;
-
-    return {
-      id: data.id,
-      number: data.week_number,
-      startDate: data.saturday_date,
-      endDate: data.saturday_date,
-      status: data.status
-    };
-  },
 
   /**
    * Sync game scores from NHL API
@@ -504,80 +473,6 @@ export const supabaseService = {
       return { updated: result.updated ?? 0, errors: result.errors ?? [] };
     } catch (error: any) {
       return { updated: 0, errors: [error.message || 'Unknown error'] };
-    }
-  },
-
-  /**
-   * Safety net: Find any FINAL games with PENDING picks and recalculate them
-   */
-  async recalculatePendingPicks(weekId: string): Promise<void> {
-    try {
-      // Get all FINAL games for this week
-      const { data: finalGames } = await supabase
-        .from('games')
-        .select('*')
-        .eq('week_id', weekId)
-        .eq('status', 'FINAL');
-
-      if (!finalGames) return;
-
-      for (const game of finalGames) {
-        // Check if any picks for this game are still PENDING
-        const { data: pendingPicks } = await supabase
-          .from('picks')
-          .select('id')
-          .eq('game_id', game.id)
-          .eq('result', 'PENDING');
-
-        if (pendingPicks && pendingPicks.length > 0) {
-          console.log(`Recalculating ${pendingPicks.length} pending picks for game ${game.id}`);
-          await this.calculatePickResults(game.id, game.home_score, game.away_score);
-        }
-      }
-    } catch (error) {
-      console.error('Error recalculating pending picks:', error);
-    }
-  },
-
-  /**
-   * Check if a week should be marked as COMPLETED
-   * Conditions: All games are FINAL, OR it's past 3 AM ET Sunday
-   */
-  async checkWeekCompletion(weekId: string): Promise<void> {
-    try {
-      // Get the week
-      const { data: week } = await supabase
-        .from('weeks')
-        .select('*')
-        .eq('id', weekId)
-        .single();
-
-      if (!week || week.status === 'COMPLETED') return;
-
-      const saturdayDate = week.saturday_date;
-
-      // Check if it's past 3 AM Sunday
-      const pastSunday4AM = isAfterSunday4AM(saturdayDate);
-
-      // Check if all games are FINAL
-      const { data: games } = await supabase
-        .from('games')
-        .select('status')
-        .eq('week_id', weekId);
-
-      const allGamesFinal = games && games.length > 0 && games.every(g => g.status === 'FINAL');
-
-      // Mark as COMPLETED if either condition is met
-      if (allGamesFinal || pastSunday4AM) {
-        await supabase
-          .from('weeks')
-          .update({ status: 'COMPLETED' })
-          .eq('id', weekId);
-
-        console.log(`Week ${weekId} marked as COMPLETED (allGamesFinal: ${allGamesFinal}, pastSunday4AM: ${pastSunday4AM})`);
-      }
-    } catch (error) {
-      console.error('Error checking week completion:', error);
     }
   }
 };
