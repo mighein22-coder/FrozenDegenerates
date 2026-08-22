@@ -63,12 +63,6 @@ Nothing currently in flight.
 
 ### Needs a decision or an action from the pool admin
 
-- [ ] **Apply `0003_pick_visibility.sql`.** Run the policy-audit query in
-      `supabase/README.md` first — the deployed policy names were created by hand
-      and may not match what the migration drops.
-- [ ] **Apply `0004_enforce_deadline.sql`** straight after 0003. Adopted — moves
-      deadline enforcement out of browser JavaScript and into the database.
-      Verified not to affect scoring, which runs under the service-role key.
 - [ ] #10 Verify RLS on `weeks` and `games`. The anon client inserts weeks and
       games and updates week status, so the deployed policies must permit any
       authenticated member to do the same. Decide whether to move those writes

@@ -79,8 +79,8 @@ deadline.** That is the one window where a mistake stops people using the pool.
 
 | Date | File | By |
 |---|---|---|
-| _(not yet applied)_ | `0003_pick_visibility.sql` | |
-| _(not yet applied)_ | `0004_enforce_deadline.sql` | |
+| 2026-08-22 | `0003_pick_visibility.sql` | pool admin |
+| 2026-08-22 | `0004_enforce_deadline.sql` | pool admin |
 
 ## Adding a member
 

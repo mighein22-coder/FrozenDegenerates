@@ -105,7 +105,7 @@ Treat the pool's standings as tamperable until 15–18 are closed.
   - Policy on `picks` was `SELECT USING (true)` — the UI hid other players'
     picks, but one query from the browser console returned the whole league's
     open-week sheet
-  - Fixed by `supabase/migrations/0003_pick_visibility.sql` (**needs applying**)
+  - Fixed by `supabase/migrations/0003_pick_visibility.sql`, applied 2026-08-22
   - Note the limit: RLS does not restrict the Supabase dashboard or the
     service-role key, so this stops casual access, not the project owner
 
@@ -125,7 +125,7 @@ Treat the pool's standings as tamperable until 15–18 are closed.
 - [x] **24. Pick Deadline Enforced Only in Browser JavaScript** ✅
   - `savePicks` checked the deadline client-side; the RLS policies carried no
     time condition, so picks could be rewritten from the console after games started
-  - Fixed by `supabase/migrations/0004_enforce_deadline.sql` (**needs applying**)
+  - Fixed by `supabase/migrations/0004_enforce_deadline.sql`, applied 2026-08-22
   - Verified not to affect scoring: `sync-week` uses the service-role key, which
     bypasses RLS, so picks still resolve and weeks still close after the deadline
 
