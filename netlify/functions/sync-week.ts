@@ -1,37 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
-
-/**
- * Returns true if current UTC time is past 4 AM ET on the Sunday after the given Saturday.
- * Handles DST automatically using Intl.
- */
-function isAfterSunday4AM(saturdayDateStr: string): boolean {
-  const parts = saturdayDateStr.split('-');
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10);
-  const day = parseInt(parts[2], 10);
-
-  const sundayDay = day + 1;
-  const sundayStr = `${year}-${String(month).padStart(2, '0')}-${String(sundayDay).padStart(2, '0')}`;
-
-  // Determine ET UTC offset on that Sunday using a test point (8:30 AM UTC)
-  // EDT (UTC-4): 8:30 UTC → 4:30 ET  (hour = 4)
-  // EST (UTC-5): 8:30 UTC → 3:30 ET  (hour = 3)
-  const testPoint = new Date(`${sundayStr}T08:30:00Z`);
-  const etHour = parseInt(
-    testPoint.toLocaleString('en-US', {
-      timeZone: 'America/New_York',
-      hour: '2-digit',
-      hour12: false
-    })
-  );
-  const utcOffset = etHour === 4 ? 4 : 5;
-  const sunday4amUTC = new Date(
-    `${sundayStr}T${String(4 + utcOffset).padStart(2, '0')}:00:00Z`
-  );
-
-  return new Date() > sunday4amUTC;
-}
+import { isAfterSunday4AM } from './_shared/etTime';
 
 /**
  * Netlify Function: sync-week
