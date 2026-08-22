@@ -13,6 +13,43 @@ interface ResultsViewProps {
   syncingScores?: boolean;
 }
 
+type CellState =
+  | { kind: 'win' | 'loss' | 'pending'; teamId: string; confidence: number }
+  | { kind: 'hidden' }
+  | { kind: 'none' };
+
+/**
+ * What to show for one player's pick on one game.
+ *
+ * Shared by the desktop matrix and the mobile card list so the two can never
+ * disagree about whether a pick is revealed.
+ */
+function cellState(game: Game, pick: Pick | undefined, isLocked: boolean): CellState {
+  if (game.status === 'FINAL') {
+    if (!pick) return { kind: 'none' };
+    const isWin =
+      (game.homeScore! > game.awayScore! && pick.selectedTeamId === game.homeTeamId) ||
+      (game.awayScore! > game.homeScore! && pick.selectedTeamId === game.awayTeamId);
+    return {
+      kind: isWin ? 'win' : 'loss',
+      teamId: pick.selectedTeamId,
+      confidence: pick.confidence
+    };
+  }
+
+  // Game unfinished and the deadline hasn't passed — picks stay concealed
+  if (!isLocked) return { kind: 'hidden' };
+
+  if (!pick) return { kind: 'none' };
+  return { kind: 'pending', teamId: pick.selectedTeamId, confidence: pick.confidence };
+}
+
+const TEAM_TEXT_CLASS: Record<'win' | 'loss' | 'pending', string> = {
+  win: 'text-green-400',
+  loss: 'text-red-400 line-through decoration-red-500/50',
+  pending: 'text-ice-400'
+};
+
 /**
  * Results view - League-wide pick matrix
  */
@@ -107,9 +144,56 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
         </div>
       </header>
 
-      {/* Matrix Table — always visible; per-cell logic handles open vs locked weeks */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <p className="md:hidden text-center text-xs text-slate-600 py-1 border-b border-slate-800">← Scroll →</p>
+      {/* Mobile: one card per player, since a games-wide table can't be read on a phone */}
+      <div className="md:hidden space-y-3">
+        {leagueUsers.map(user => {
+          const sortedGames = [...weekGames].sort(
+            (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+          );
+
+          return (
+            <div key={user.id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2 bg-slate-950/60 border-b border-slate-800">
+                {user.avatar && <img src={user.avatar} className="w-6 h-6 rounded-full" alt="" />}
+                <span className="font-medium text-slate-200 truncate">{user.name}</span>
+              </div>
+
+              <ul className="divide-y divide-slate-800/70">
+                {sortedGames.map(game => {
+                  const pick = leaguePicks.find(p => p.userId === user.id && p.gameId === game.id);
+                  const state = cellState(game, pick, isLocked);
+
+                  return (
+                    <li key={game.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                      <span className="text-xs text-slate-500 whitespace-nowrap">
+                        {game.awayTeamId} <span className="text-slate-700">@</span> {game.homeTeamId}
+                      </span>
+
+                      {state.kind === 'none' && <span className="text-slate-700">-</span>}
+                      {state.kind === 'hidden' && (
+                        <span className="font-bold text-slate-600">?</span>
+                      )}
+                      {(state.kind === 'win' || state.kind === 'loss' || state.kind === 'pending') && (
+                        <span className="flex items-center gap-2">
+                          <span className={`${TEAM_TEXT_CLASS[state.kind]} font-bold`}>
+                            {state.teamId}
+                          </span>
+                          <span className="text-xs bg-slate-800 px-1.5 rounded text-slate-500 border border-slate-700">
+                            {state.confidence} pts
+                          </span>
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop: full matrix. Per-cell logic handles open vs locked weeks. */}
+      <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -152,53 +236,31 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                   </td>
                   {weekGames.map(game => {
                     const pick = leaguePicks.find(p => p.userId === user.id && p.gameId === game.id);
+                    const state = cellState(game, pick, isLocked);
                     const cellClass = 'p-2 md:p-3 text-center border-l border-slate-800/50';
 
-                    // Determine what to show in this cell
-                    if (game.status === 'FINAL') {
-                      // Game is over — show win/loss result for everyone
-                      if (!pick) {
-                        return <td key={game.id} className={cellClass}><span className="text-slate-700">-</span></td>;
-                      }
-                      const isWin =
-                        (game.homeScore! > game.awayScore! && pick.selectedTeamId === game.homeTeamId) ||
-                        (game.awayScore! > game.homeScore! && pick.selectedTeamId === game.awayTeamId);
-                      const textClass = isWin
-                        ? 'text-green-400'
-                        : 'text-red-400 line-through decoration-red-500/50';
-                      return (
-                        <td key={game.id} className={cellClass}>
-                          <div className="flex flex-col items-center">
-                            <span className={`${textClass} text-lg font-bold`}>{pick.selectedTeamId}</span>
-                            <span className="text-xs bg-slate-800 px-1.5 rounded text-slate-500 border border-slate-700">
-                              {pick.confidence} pts
-                            </span>
-                          </div>
-                        </td>
-                      );
-                    } else if (!isLocked) {
-                      // Game not finished + week not locked → deadline hasn't passed, hide picks
+                    if (state.kind === 'none') {
+                      return <td key={game.id} className={cellClass}><span className="text-slate-700">-</span></td>;
+                    }
+                    if (state.kind === 'hidden') {
                       return (
                         <td key={game.id} className={cellClass}>
                           <span className="font-bold text-slate-600">?</span>
                         </td>
                       );
-                    } else {
-                      // Game not finished + week is locked → show pending pick in ice-blue
-                      if (!pick) {
-                        return <td key={game.id} className={cellClass}><span className="text-slate-700">-</span></td>;
-                      }
-                      return (
-                        <td key={game.id} className={cellClass}>
-                          <div className="flex flex-col items-center">
-                            <span className="font-bold text-ice-400 text-lg">{pick.selectedTeamId}</span>
-                            <span className="text-xs bg-slate-800 px-1.5 rounded text-slate-500 border border-slate-700">
-                              {pick.confidence} pts
-                            </span>
-                          </div>
-                        </td>
-                      );
                     }
+                    return (
+                      <td key={game.id} className={cellClass}>
+                        <div className="flex flex-col items-center">
+                          <span className={`${TEAM_TEXT_CLASS[state.kind]} text-lg font-bold`}>
+                            {state.teamId}
+                          </span>
+                          <span className="text-xs bg-slate-800 px-1.5 rounded text-slate-500 border border-slate-700">
+                            {state.confidence} pts
+                          </span>
+                        </div>
+                      </td>
+                    );
                   })}
                 </tr>
               ))}

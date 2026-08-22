@@ -483,6 +483,7 @@ function App() {
             user={profile}
             standings={standings}
             currentPicks={currentPicks}
+            isLocked={isLocked}
             onNavigate={setView}
           />
         )}
