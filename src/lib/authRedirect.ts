@@ -43,3 +43,13 @@ export const initialAuthParams: AuthRedirectParams =
   typeof window === 'undefined'
     ? { type: null, errorDescription: null, code: null, hasAccessToken: false }
     : readAuthParams(window.location);
+
+/**
+ * True when the page was opened from an emailed auth link, in either flow.
+ *
+ * Checked against the load-time snapshot rather than the live URL, so it stays
+ * true after supabase-js has erased the fragment.
+ */
+export function isAuthCallback(params: AuthRedirectParams = initialAuthParams): boolean {
+  return Boolean(params.type || params.code || params.hasAccessToken || params.errorDescription);
+}

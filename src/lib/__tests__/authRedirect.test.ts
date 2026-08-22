@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readAuthParams } from '../authRedirect';
+import { readAuthParams, isAuthCallback } from '../authRedirect';
 
 /**
  * Supabase splits auth-link parameters across the fragment and the query string
@@ -68,5 +68,29 @@ describe('readAuthParams — edge cases', () => {
 
   it('does not mistake an empty fragment for an access token', () => {
     expect(readAuthParams(loc('#')).hasAccessToken).toBe(false);
+  });
+});
+
+describe('isAuthCallback', () => {
+  const params = (hash = '', search = '') => readAuthParams({ hash, search });
+
+  it('is false for an ordinary page load', () => {
+    expect(isAuthCallback(params())).toBe(false);
+  });
+
+  it('is true for a recovery link', () => {
+    expect(isAuthCallback(params('#access_token=abc&type=recovery'))).toBe(true);
+  });
+
+  it('is true for a PKCE code', () => {
+    expect(isAuthCallback(params('', '?code=some-uuid'))).toBe(true);
+  });
+
+  it('is true for an expired link, which carries an error but no session', () => {
+    expect(isAuthCallback(params('#error_description=Email+link+has+expired'))).toBe(true);
+  });
+
+  it('is not fooled by unrelated query parameters', () => {
+    expect(isAuthCallback(params('', '?week=2026-10-31'))).toBe(false);
   });
 });

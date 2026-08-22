@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { supabaseService } from './lib/supabaseService';
+import { isAuthCallback } from './lib/authRedirect';
 import { getTimeUntilDeadline, arePicksLocked } from './lib/timezone';
 import type { Week, Game, Pick, StandingsRow } from './types';
 
@@ -9,6 +10,7 @@ import { Sidebar } from './components/layout/Sidebar';
 
 // Views
 import { LoginView } from './components/views/LoginView';
+import { AuthCallbackView } from './components/views/AuthCallbackView';
 import { DashboardView } from './components/views/DashboardView';
 import { PicksView } from './components/views/PicksView';
 import { StandingsView } from './components/views/StandingsView';
@@ -26,6 +28,10 @@ function App() {
 
   // View state
   const [view, setView] = useState<ViewState>('DASHBOARD');
+
+  // True for the lifetime of an emailed auth link, until the user leaves the
+  // callback screen. Seeded once from the load-time snapshot.
+  const [handlingAuthCallback, setHandlingAuthCallback] = useState(isAuthCallback);
 
   // Data state
   const [currentWeek, setCurrentWeek] = useState<Week | null>(null);
@@ -413,6 +419,23 @@ function App() {
       }
     }
   }, [availableResultsWeeks, selectedResultsWeekId]);
+
+  // Emailed auth links land here. This must be checked before the two gates
+  // below: during a password recovery a session already exists, so the authed
+  // shell would render the dashboard before the user could set a password.
+  if (handlingAuthCallback) {
+    return (
+      <AuthCallbackView
+        onDone={() => {
+          // Back to the root, dropping the PKCE `code` and leaving the
+          // /auth/callback path behind. The fragment is already gone —
+          // supabase-js consumed it during init.
+          window.history.replaceState({}, '', '/');
+          setHandlingAuthCallback(false);
+        }}
+      />
+    );
+  }
 
   // Loading state
   if (authLoading) {
