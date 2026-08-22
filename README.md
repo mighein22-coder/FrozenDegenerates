@@ -6,6 +6,9 @@ Each week members pick five of Saturday's games and rank them by confidence 1–
 Correct picks score their confidence value; the pool tracks weekly and cumulative
 standings, win-loss records, and every member's pick history.
 
+The season is also split into three roughly equal segments, each with its own
+standings — so a slow start doesn't put the rest of the year out of reach.
+
 **Status:** deployed and running a live season.
 
 ## How it works
@@ -22,7 +25,7 @@ standings, win-loss records, and every member's pick history.
 
 **Dashboard** — rank, total points, record, and where you are in the current week.
 **Saturday Picks** — the week's games, with team records and a live deadline countdown.
-**Standings** — league leaderboard, weekly and cumulative.
+**Standings** — league leaderboard, switchable between the three season segments and the full season.
 **League Matrix** — everyone's picks for a week, once the deadline has passed.
 **My History** — your season, week by week.
 **Team Affinity** — each member's most-picked teams.

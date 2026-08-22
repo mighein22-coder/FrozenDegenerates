@@ -3,7 +3,10 @@ import { useAuth } from './hooks/useAuth';
 import { supabaseService } from './lib/supabaseService';
 import { isAuthCallback } from './lib/authRedirect';
 import { getTimeUntilDeadline, arePicksLocked } from './lib/timezone';
-import type { Week, Game, Pick, StandingsRow } from './types';
+import { computeStandings } from './lib/standings';
+import { getSegments, getCurrentSegment } from './lib/segments';
+import type { Week, Game, Pick } from './types';
+import type { Profile } from './lib/supabase';
 
 // Layout
 import { Sidebar } from './components/layout/Sidebar';
@@ -39,8 +42,15 @@ function App() {
   const [selectedResultsWeekId, setSelectedResultsWeekId] = useState<string>('');
   const [weekGames, setWeekGames] = useState<Game[]>([]);
   const [currentPicks, setCurrentPicks] = useState<Partial<Pick>[]>([]);
-  const [standings, setStandings] = useState<StandingsRow[]>([]);
-  const [leagueProfiles, setLeagueProfiles] = useState<any[]>([]);
+  const [leagueProfiles, setLeagueProfiles] = useState<Profile[]>([]);
+
+  // Raw standings inputs, fetched once. The season table and each segment's
+  // table are derived from these, so switching segment costs no round-trip.
+  const [allPicks, setAllPicks] = useState<Pick[]>([]);
+
+  // null = Full Season. Defaults to whichever segment the season is currently in.
+  const segments = useMemo(() => getSegments(), []);
+  const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
 
   // UI state
   const [loadingSchedule, setLoadingSchedule] = useState(false);
@@ -71,13 +81,10 @@ function App() {
           await supabaseService.syncScores(pastWeekId);
         }
 
-        // Load standings (pass current week ID for weekly score calculation)
-        const standingsData = await supabaseService.getStandings(week.id);
-        setStandings(standingsData);
-
-        // Load all profiles
-        const profiles = await supabaseService.getProfiles();
+        // One fetch feeds both the league directory and every standings scope
+        const { profiles, picks } = await supabaseService.getStandingsInputs();
         setLeagueProfiles(profiles);
+        setAllPicks(picks);
         setLoadError(''); // Clear any previous error
       } catch (error: any) {
         console.error('Error loading initial data:', error);
@@ -210,16 +217,17 @@ function App() {
           setSyncingScores(false);
         }
 
-        // Then load the updated data (independent queries — run them together)
-        const [games, picks, standingsData] = await Promise.all([
+        // Then load the updated data (independent queries — run them together).
+        // Refresh the standings inputs too, since a sync may have resolved picks.
+        const [games, picks, inputs] = await Promise.all([
           supabaseService.getGamesByWeek(selectedResultsWeekId),
           supabaseService.getAllPicks(selectedResultsWeekId),
-          supabaseService.getStandings(selectedResultsWeekId)
+          supabaseService.getStandingsInputs()
         ]);
 
         setResultsWeekGames(games);
         setResultsWeekPicks(picks);
-        setStandings(standingsData);
+        setAllPicks(inputs.picks);
       } catch (error) {
         console.error('Error loading results data:', error);
         setSyncingScores(false);
@@ -347,12 +355,13 @@ function App() {
 
       setSaveStatus('SAVED');
 
-      // Reload picks and standings
-      const picks = await supabaseService.getUserPicks(user.id, currentWeek.id);
+      // Reload picks and the standings inputs
+      const [picks, inputs] = await Promise.all([
+        supabaseService.getUserPicks(user.id, currentWeek.id),
+        supabaseService.getStandingsInputs()
+      ]);
       setCurrentPicks(picks);
-
-      const standingsData = await supabaseService.getStandings(currentWeek?.id);
-      setStandings(standingsData);
+      setAllPicks(inputs.picks);
 
       // Reset status after 2 seconds
       setTimeout(() => setSaveStatus('IDLE'), 2000);
@@ -376,11 +385,38 @@ function App() {
       setTeamStatsPicks([]);
       setMyHistoryPicks({});
       setMyHistoryGames({});
-      setStandings([]);
+      setAllPicks([]);
+      setLeagueProfiles([]);
     } catch (error) {
       console.error('Logout error:', error);
     }
   };
+
+  // Standings, derived rather than fetched. The dashboard always shows season
+  // position; the standings view follows the selected segment.
+  const seasonStandings = useMemo(
+    () => computeStandings(leagueProfiles, allPicks, { weekId: currentWeek?.id }),
+    [leagueProfiles, allPicks, currentWeek]
+  );
+
+  const scopedStandings = useMemo(
+    () =>
+      selectedSegment === null
+        ? seasonStandings
+        : computeStandings(leagueProfiles, allPicks, {
+            weekId: currentWeek?.id,
+            segment: selectedSegment
+          }),
+    [selectedSegment, seasonStandings, leagueProfiles, allPicks, currentWeek]
+  );
+
+  // Open the standings on the segment currently being played, once weeks load
+  const defaultSegmentApplied = useRef(false);
+  useEffect(() => {
+    if (defaultSegmentApplied.current || !currentWeek) return;
+    defaultSegmentApplied.current = true;
+    setSelectedSegment(getCurrentSegment(currentWeek.startDate, segments)?.number ?? null);
+  }, [currentWeek, segments]);
 
   // Validation
   const isPickSheetValid = useMemo(() => {
@@ -481,7 +517,7 @@ function App() {
         {view === 'DASHBOARD' && (
           <DashboardView
             user={profile}
-            standings={standings}
+            standings={seasonStandings}
             currentPicks={currentPicks}
             isLocked={isLocked}
             onNavigate={setView}
@@ -532,8 +568,11 @@ function App() {
 
         {view === 'STANDINGS' && (
           <StandingsView
-            standings={standings}
+            standings={scopedStandings}
             currentUser={profile ? { ...profile, role: profile.role as 'admin' | 'member' } : null}
+            segments={segments}
+            selectedSegment={selectedSegment}
+            onSelectSegment={setSelectedSegment}
           />
         )}
 
