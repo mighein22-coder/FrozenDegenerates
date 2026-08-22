@@ -1,3 +1,7 @@
+// Must come first: this snapshots the auth params out of the URL before
+// supabase-js initializes and erases the fragment. See lib/authRedirect.ts.
+import './lib/authRedirect';
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
