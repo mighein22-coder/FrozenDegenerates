@@ -1,5 +1,25 @@
 import { Team } from './types';
 
+/**
+ * Bounds of the NHL regular season, as YYYY-MM-DD.
+ *
+ * The pool only plays Saturdays, so these are used to enumerate the season's
+ * Saturdays and split them into three segments (see `lib/segments.ts`). Only the
+ * Saturdays inside this range count; the exact start and end days need not be
+ * Saturdays themselves.
+ *
+ * 2026-27: opens Tuesday 29 September 2026 and concludes Saturday 10 April 2027
+ * — the NHL's first 84-game season since 1993-94.
+ *
+ * UPDATE THESE EVERY SEASON. They are the only dial controlling where the
+ * segment boundaries fall.
+ */
+export const SEASON_START = '2026-09-29';
+export const SEASON_END = '2027-04-10';
+
+/** Label shown for the whole-season view, alongside the three segments. */
+export const FULL_SEASON_LABEL = 'Full Season';
+
 export const TEAMS: Record<string, Team> = {
   // Atlantic
   BOS: { id: 'BOS', name: 'Bruins', abbreviation: 'BOS', city: 'Boston', logoColor: '#FFB81C' },

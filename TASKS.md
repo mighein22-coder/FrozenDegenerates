@@ -49,6 +49,8 @@ Nothing currently in flight.
       (`supabase/migrations/0003_pick_visibility.sql`).
 - [x] Enforce the pick deadline in the database
       (`supabase/migrations/0004_enforce_deadline.sql`).
+- [x] Season segments — three auto-computed thirds with their own standings,
+      selectable alongside the cumulative season table. No schema change.
 - [x] Fix the broken password reset. `LoginView` sent users to
       `/auth/callback`, which nothing handled, so reset links dead-ended with
       no way to choose a new password. `AuthCallbackView` now reads the
@@ -83,9 +85,6 @@ Nothing currently in flight.
 
 ### Planned features
 
-- [ ] Season segments — three auto-computed thirds with their own standings,
-      alongside the cumulative season table. No schema change; derived in code
-      from `SEASON_START` / `SEASON_END`.
 - [ ] URL routing. Views still live in component state, so nothing is
       linkable and the back button does not work. The `/auth/callback` half of
       this is already fixed — `AuthCallbackView` renders off the load-time auth
