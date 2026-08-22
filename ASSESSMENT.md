@@ -96,52 +96,90 @@ Treat the pool's standings as tamperable until 15–18 are closed.
   - Confirmed both pending migrations' premises are accurate:
     `profiles` has **no INSERT policy** (so `0002` is needed as written), and the
     `Users can update own profile` policy has **`with_check = null`** (so `0001`
-    is needed as written). Neither is applied yet.
+    is needed as written). Both were applied 2026-08-21.
+---
+
+## Found during the 2026-08 cleanup
+
+- [x] **21. Picks Readable by Every Player Before the Deadline** ✅
+  - Policy on `picks` was `SELECT USING (true)` — the UI hid other players'
+    picks, but one query from the browser console returned the whole league's
+    open-week sheet
+  - Fixed by `supabase/migrations/0003_pick_visibility.sql`, applied 2026-08-22
+  - Note the limit: RLS does not restrict the Supabase dashboard or the
+    service-role key, so this stops casual access, not the project owner
+
+- [x] **22. Month-End Saturdays Could Never Close on Time** ✅
+  - `sync-week`'s hand-rolled DST helper built the Sunday date by string
+    concatenation, so `2026-10-31` became `2026-10-32` — an invalid Date.
+    Comparisons against NaN are false, so `pastSunday4AM` was permanently false
+    and the week could only close if every game went FINAL. 2026-10-31 is a
+    Saturday this season
+  - Fixed by sharing `src/lib/timezone.ts`; covered by a regression test
+
+- [x] **23. `Week` Row Shape and App Type Used Interchangeably** ✅
+  - `getCurrentWeek()` returned the raw snake_case row, `getAllWeeks()` returned
+    camelCase, both typed as `Week`; `App.tsx` read both spellings
+  - DB types renamed to `*Row`; cleared 12 typecheck errors `vite build` never showed
+
+- [x] **24. Pick Deadline Enforced Only in Browser JavaScript** ✅
+  - `savePicks` checked the deadline client-side; the RLS policies carried no
+    time condition, so picks could be rewritten from the console after games started
+  - Fixed by `supabase/migrations/0004_enforce_deadline.sql`, applied 2026-08-22
+  - Verified not to affect scoring: `sync-week` uses the service-role key, which
+    bypasses RLS, so picks still resolve and weeks still close after the deadline
+
+- [ ] **25. `savePicks` Can Lose a Member's Picks**
+  - Deletes all picks for the week then inserts the new set, with no transaction.
+    A failure between the two loses them. #6 above marked this fixed, but only
+    the error message improved
+  - Fix: a `save_picks` RPC doing both in one transaction
+  - Note: #24 marginally widens this. A submission landing exactly on the 10:00
+    boundary can now have its insert refused after the delete succeeded. The
+    window is milliseconds; the RPC closes it
+
+- [ ] **26. `VITE_SYNC_WEEK_SECRET` Is Not Secret**
+  - Vite inlines `VITE_*` into the public bundle, so the shared secret guarding
+    `sync-week` ships to every visitor
+  - Fix: verify a Supabase JWT and check `profiles.role` instead
 
 ---
 
 ## MEDIUM — Quality Improvements
 
-- [ ] **11. Results Matrix Has No Mobile Layout**
-  - Wide table is unusable on phone; only has a "scroll" hint
-  - Fix: Add mobile card view (one user per card) like the Standings mobile layout
+- [x] **11. Results Matrix Has No Mobile Layout** ✅
+  - Added a card-per-player mobile view; cell logic shared with the desktop matrix
 
-- [ ] **12. N+1 Queries in TeamStats and MyHistory**
-  - `src/App.tsx:228-243`, `258-270` — sequential DB round-trip per week (up to 40 by week 20)
-  - Fix: Parallelize with `Promise.all()`
+- [x] **12. N+1 Queries in TeamStats and MyHistory** ✅
+  - Replaced both per-week loops with batched `.in()` queries
 
-- [ ] **13. `syncScores` Called on Every Results Tab/Week Change**
-  - Fires Netlify function even for COMPLETED weeks (no data will change)
-  - Fix: Skip sync if week status is COMPLETED
+- [x] **13. `syncScores` Called on Every Results Tab/Week Change** ✅
+  - Skipped for COMPLETED weeks; `getRecentIncompleteWeeks` no longer returns them
 
-- [ ] **14. Dashboard "Make Picks" CTA Stale After Submission**
-  - Always says "make your picks" even when 5 picks are already submitted
-  - Fix: Detect `currentPicks.length === 5` and change message accordingly
+- [x] **14. Dashboard "Make Picks" CTA Stale After Submission** ✅
+  - CTA now reflects incomplete / submitted / locked
 
-- [ ] **15. `dateStr` Not Validated Before NHL URL Interpolation**
-  - `netlify/functions/sync-scores.ts:30`, `gemini-schedule.ts:29`, `sync-week.ts:77`
-  - Fix: Add regex validation `if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return 400`
+- [x] **15. `dateStr` Not Validated Before NHL URL Interpolation** ✅
+  - Added format guards returning 400 in `nhl-schedule` and `sync-week`
 
 ---
 
 ## LOW — Housekeeping
 
-- [ ] **16. Tied Players Get Different Ranks (No Tiebreaker)**
-  - `src/lib/supabaseService.ts:269` — add `wins` as tiebreaker in sort
+- [x] **16. Tied Players Get Different Ranks (No Tiebreaker)** ✅
+  - Sort by points, then wins, then name; competition ranks in `lib/standings.ts`
 
-- [ ] **17. `sync-scores.ts` Appears to Be Dead Code**
-  - `sync-week.ts` is the active function — verify and remove if unused
+- [x] **17. `sync-scores.ts` Appears to Be Dead Code** ✅
+  - Confirmed dead and deleted
 
-- [ ] **18. Stale/Unused Dependencies**
-  - `recharts` and `@google/genai` still in `package.json` but both removed from the app
-  - Fix: `npm uninstall recharts @google/genai`
+- [x] **18. Stale/Unused Dependencies** ✅
+  - Removed `recharts`, `react-hot-toast`, `@google/genai`
 
-- [ ] **19. Stale `CURRENT_WEEK_ID = 'week-5'` Constant**
-  - Not used anywhere but confusing — remove from `constants.ts`
+- [x] **19. Stale `CURRENT_WEEK_ID = 'week-5'` Constant** ✅
+  - Removed
 
-- [ ] **20. Comment/Code Mismatches**
-  - `supabaseService.ts:487`: comment says "3 AM" but function checks 4 AM
-  - `sync-week.ts`: duplicates DST logic independently from `timezone.ts`
+- [x] **20. Comment/Code Mismatches** ✅
+  - `sync-week` now imports the shared ET helpers; the duplicated DST logic is gone
 
 ---
 

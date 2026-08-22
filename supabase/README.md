@@ -20,12 +20,17 @@ Migrations are written to be idempotent, so re-running one is safe.
 | --- | --- | --- |
 | `0001_lock_profile_privileged_columns.sql` | ☑ applied 2026-08-21 | Stops a member from promoting themselves to `admin` by editing their own `profiles` row |
 | `0002_allow_signup_profile_insert.sql` | ☑ applied 2026-08-21 | Lets a new user create their own `profiles` row at signup, without being able to set `role` |
-| `0003_pick_visibility.sql` | ☐ not applied | Hides other players' picks until the week's Saturday 10:00 ET deadline passes |
-| `0004_enforce_deadline.sql` | ☐ not applied | Enforces that deadline for writes too, so picks cannot be changed after games start |
+| `0003_pick_visibility.sql` | ☑ applied 2026-08-22 | Hides other players' picks until the week's Saturday 10:00 ET deadline passes |
+| `0004_enforce_deadline.sql` | ☑ applied 2026-08-22 | Enforces that deadline for writes too, so picks cannot be changed after games start |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
 on the `picks_revealed()` function created by 0003.
+
+0003 and 0004 were applied and verified on 2026-08-22: `picks_revealed()` exists,
+`picks` carries exactly four policies (one per command), and exactly one of them
+is a SELECT policy — confirming no permissive policy survived the swap, which is
+the failure mode that would have left picks readable while appearing protected.
 
 Both were verified after applying: `authenticated` now holds UPDATE only on
 `name`/`avatar` and INSERT only on `id`/`email`/`name`/`avatar` — `role` appears

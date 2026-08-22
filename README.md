@@ -1,261 +1,91 @@
-# IcePick - NHL Regular Season Pick'em Pool
+# IcePick — NHL Regular Season Pick'em Pool
 
-A production-ready web application for managing NHL game picking pools with 10-20 users.
+A web app for running a Saturday-night NHL pick'em pool for 10–20 people.
 
-## 🎉 Current Status: 80% Complete!
+Each week members pick five of Saturday's games and rank them by confidence 1–5.
+Correct picks score their confidence value; the pool tracks weekly and cumulative
+standings, win-loss records, and every member's pick history.
 
-**All development work is done.** You just need to configure Supabase and deploy!
+**Status:** deployed and running a live season.
 
-### ✅ What's Built
+## How it works
 
-- **Clean Architecture**: Refactored from 726-line monolith to modular components
-- **Real Database**: Supabase PostgreSQL (replaces localStorage)
-- **Secure API**: Gemini API key protected server-side
-- **Authentication**: Email + password with Supabase Auth
-- **DST-Aware**: Fixed timezone bug with proper ET handling
-- **Responsive UI**: Beautiful dark theme optimized for mobile
-- **6 Complete Views**: Login, Dashboard, Picks, Standings, Results, Team Stats
+| When (ET) | What happens |
+|---|---|
+| Monday 6:00 AM | The week rolls over to the coming Saturday; the app fetches that day's NHL schedule |
+| Through the week | Members pick five games and assign confidence 1–5, no duplicates |
+| **Saturday 10:00 AM** | Picks lock, and the league's selections become visible |
+| Saturday evening | Games play; scores sync from the NHL API |
+| Sunday 4:00 AM | The week closes and results are final |
 
-### 📁 Project Structure
+## Views
 
-```
-prototype_code/           ← Original backup (untouched)
-src/                      ← Production codebase
-  ├── lib/               ← Supabase client, data services, utilities
-  ├── hooks/             ← useAuth() hook
-  ├── components/
-  │   ├── layout/        ← Sidebar
-  │   └── views/         ← 6 view components
-  ├── App.tsx            ← Main app (refactored ✅)
-  └── .env.example       ← Environment template
+**Dashboard** — rank, total points, record, and where you are in the current week.
+**Saturday Picks** — the week's games, with team records and a live deadline countdown.
+**Standings** — league leaderboard, weekly and cumulative.
+**League Matrix** — everyone's picks for a week, once the deadline has passed.
+**My History** — your season, week by week.
+**Team Affinity** — each member's most-picked teams.
+**Admin** — manual score sync, week status, member directory (admins only).
 
-netlify/functions/        ← Serverless API (Gemini)
-PLANNING.md              ← Full implementation plan
-NEXT_STEPS.md            ← 👈 START HERE
-```
+## Tech stack
 
----
+- **Frontend** — React 19, TypeScript, Vite. Tailwind via CDN; there is no CSS build step.
+- **Backend** — Supabase (Postgres + Auth), accessed directly from the browser under Row Level Security.
+- **Serverless** — Netlify Functions for the NHL API proxy and server-side score sync.
+- **Hosting** — Netlify.
 
-## 🚀 Quick Start (1-2 hours to production)
+The NHL schedule and scores come from the public `api-web.nhle.com` endpoints. No
+AI service is involved — an earlier version used Gemini for schedule fetching and
+that has been fully removed.
 
-### 1. Set Up Supabase (~30 min)
-
-Follow **NEXT_STEPS.md** Section 1:
-- Create project at supabase.com
-- Run SQL schema (copy/paste from NEXT_STEPS.md)
-- Create 4 demo users
-- Save your credentials
-
-### 2. Configure Environment (~5 min)
+## Getting started
 
 ```bash
-cd src
-cp .env.example .env.local
+npm --prefix src install
+npm --prefix netlify/functions install
+cp src/.env.example src/.env.local   # fill in your Supabase credentials
+netlify dev                          # from the repo root
 ```
 
-Edit `.env.local` with your Supabase credentials.
+Use `netlify dev` rather than `npm run dev` — the plain Vite server does not serve
+the functions, so schedule fetching and score sync will fail.
 
-### 3. Test Locally (~15 min)
+Checks before pushing:
 
 ```bash
-npm install -g netlify-cli
-cd src
-netlify dev
+npm --prefix src run typecheck   # vite build does NOT typecheck
+npm --prefix src test
+npm --prefix src run build
 ```
 
-Open http://localhost:8888 and test:
-- ✅ Login with demo user
-- ✅ Make picks (fetches NHL schedule)
-- ✅ Submit picks (saves to Supabase)
-- ✅ View standings
-
-### 4. Deploy (~10 min)
-
-```bash
-netlify deploy --prod
-```
-
-Set environment variables in Netlify dashboard, then you're live! 🎉
-
----
-
-## 📖 Documentation
+## Documentation
 
 | File | Purpose |
-|------|---------|
-| **NEXT_STEPS.md** | Step-by-step deployment guide (start here!) |
-| **PLANNING.md** | Complete implementation plan with SQL schemas |
-| **IMPLEMENTATION_STATUS.md** | What's done, what's left, file structure |
+|---|---|
+| `docs/OPERATIONS.md` | Runbook — env vars, the weekly cycle, functions, adding a member, migrations |
+| `TASKS.md` | Current work and backlog |
+| `ASSESSMENT.md` | Findings by severity, and what has been fixed |
+| `supabase/README.md` | Database migrations and how to apply them |
+| `PLANNING.md` | Historical record of the prototype-to-production plan |
 
----
+`prototype_code/` holds the original localStorage prototype, preserved as a
+reference. It is never built or deployed.
 
-## 🏗️ Tech Stack
+## Known gaps
 
-**Frontend:**
-- React 19 + TypeScript
-- Vite (build tool)
-- Tailwind CSS (styling)
-- Recharts (performance charts)
+Tracked in full in `TASKS.md`. The ones worth knowing up front:
 
-**Backend:**
-- Supabase (PostgreSQL + Auth)
-- Netlify Functions (serverless)
-- Google Gemini AI (NHL schedule fetch)
+- **Scores only sync when someone opens the app.** There is no scheduled job.
+- **Weeks are created lazily** by whoever logs in first after Monday 6 AM.
+- **No signup UI.** Accounts are created by hand in the Supabase dashboard.
+- **Password reset is broken** — the reset email points at `/auth/callback`, a
+  route that does not exist.
+- **`savePicks` is not transactional** and can lose a member's picks if the
+  insert fails after the delete.
 
-**Deployment:**
-- Netlify (free tier)
-- Custom domain support
+## Cost
 
----
-
-## 🎯 Features
-
-### For Users
-- **Email/Password Login**: Secure authentication
-- **Weekly Picks**: Select 5 Saturday NHL games with confidence levels (1-5)
-- **Deadline Enforcement**: Picks lock at 11 AM ET on Saturday
-- **Live Standings**: See your rank, W-L record, total points
-- **Results Matrix**: View all league picks after deadline
-- **Team Affinity**: See each player's most-picked teams
-- **Performance History**: Track your weekly scores
-
-### For Admins
-- **Auto Schedule Sync**: Fetches real NHL schedule from nhl.com
-- **Score Management**: Update game results (manual for now)
-- **User Management**: View all users and standings
-
----
-
-## 🔒 Security Features
-
-- ✅ API keys stored server-side only
-- ✅ Row Level Security (users can't edit others' picks)
-- ✅ Password hashing with bcrypt
-- ✅ JWT session management
-- ✅ Input validation on all forms
-- ✅ HTTPS enforced (via Netlify)
-
----
-
-## 📱 Browser Support
-
-- Chrome/Edge (latest)
-- Firefox (latest)
-- Safari (iOS 14+)
-- Mobile responsive (tested on iPhone/Android)
-
----
-
-## 💰 Cost Estimate
-
-**Free Tier (sufficient for 10-20 users):**
-- Supabase: Free (500MB storage, 50K monthly active users)
-- Netlify: Free (100GB bandwidth, 300 build minutes)
-- Gemini AI: Free (15 requests/minute)
-- **Total: $0/month** ✅
-
-**If you exceed free tier:**
-- Supabase Pro: $25/month (8GB storage, 100K MAU)
-- Netlify Pro: $19/month (400GB bandwidth)
-
----
-
-## 🐛 Troubleshooting
-
-### Can't log in?
-- Check Supabase Auth has users created
-- Verify password is `demo1234` for demo users
-- Check browser console for errors
-
-### Schedule not loading?
-- Verify GEMINI_API_KEY set in Netlify environment
-- Check Netlify Functions are running (`netlify dev`)
-- Try: `curl -X POST http://localhost:8888/.netlify/functions/gemini-schedule`
-
-### Picks not saving?
-- Check Supabase RLS policies were created
-- Verify user is authenticated (check Supabase dashboard)
-- Look at browser Network tab for failed requests
-
-**Full troubleshooting guide: See NEXT_STEPS.md**
-
----
-
-## 📈 Roadmap
-
-### Phase 1 (Current): Core Features ✅
-- User authentication
-- Weekly picks with confidence
-- Standings and results
-- Admin schedule sync
-
-### Phase 2 (Future): Enhancements
-- [ ] Admin dashboard for score entry
-- [ ] Email notifications (Resend.com)
-- [ ] Automatic score fetching from NHL API
-- [ ] Historical analytics and trends
-
-### Phase 3 (Future): Mobile
-- [ ] Progressive Web App (PWA)
-- [ ] Offline pick submission
-- [ ] Push notifications
-
----
-
-## 👥 Default Users
-
-After Supabase setup, you'll have these demo users:
-
-| Email | Password | Role |
-|-------|----------|------|
-| sarah@example.com | demo1234 | Admin |
-| mike@example.com | demo1234 | Member |
-| emma@example.com | demo1234 | Member |
-| alex@example.com | demo1234 | Member |
-
-**For production:** Delete demo users and create real accounts.
-
----
-
-## 📞 Support
-
-- **Setup Help**: See NEXT_STEPS.md for detailed instructions
-- **Supabase Issues**: https://supabase.com/docs
-- **Netlify Issues**: https://docs.netlify.com
-- **Code Questions**: All code is documented with comments
-
----
-
-## 🎓 Learning Resources
-
-If you want to understand the code:
-
-1. **Start with**: `src/App.tsx` - main application logic
-2. **Then**: `src/lib/supabaseService.ts` - database operations
-3. **Components**: `src/components/views/` - UI components
-4. **Auth**: `src/hooks/useAuth.ts` - authentication flow
-
----
-
-## 🏆 Credits
-
-Built with love for NHL fans who love to compete! 🏒
-
-**Framework:** React + TypeScript + Vite
-**Backend:** Supabase
-**Deployment:** Netlify
-**AI:** Google Gemini
-
----
-
-## 📝 License
-
-This is your project - use it however you want! No restrictions.
-
----
-
-## 🚀 Ready to Launch?
-
-**Next step:** Open **NEXT_STEPS.md** and follow the Supabase setup guide!
-
-You're 1-2 hours away from a live, production-ready NHL Pick'em Pool. Let's go! 🎉
+Free tier throughout — Supabase (500 MB, 50k MAU) and Netlify (100 GB bandwidth,
+300 build minutes) are both far above what a 20-person pool needs. The NHL API is
+public and unauthenticated.

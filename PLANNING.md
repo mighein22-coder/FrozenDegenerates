@@ -1,5 +1,10 @@
 # IcePick NHL Pick'em Pool - Production Deployment Plan
 
+> **Historical record.** This plan described the move from the localStorage
+> prototype to the deployed app, and that work is done. It is kept for context on
+> why the code is shaped the way it is. For current state see `TASKS.md`, and for
+> running the app see `docs/OPERATIONS.md`.
+
 ## Overview
 
 Transform the working IcePick prototype into a production-ready app for 10-20 users using the **simplest possible architecture**: Keep Vite + React, add Supabase for auth + database, deploy to Netlify with custom domain.
@@ -50,75 +55,11 @@ Transform the working IcePick prototype into a production-ready app for 10-20 us
 
 ### 1.2 Database Schema
 
-```sql
--- Users table (managed by Supabase Auth, extend with profiles)
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT UNIQUE NOT NULL,
-  name TEXT NOT NULL,
-  avatar TEXT,
-  role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Weeks
-CREATE TABLE weeks (
-  id TEXT PRIMARY KEY,
-  week_number INTEGER NOT NULL,
-  saturday_date DATE NOT NULL,
-  status TEXT DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'LOCKED', 'COMPLETED')),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Games
-CREATE TABLE games (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  week_id TEXT REFERENCES weeks(id) ON DELETE CASCADE,
-  home_team_id TEXT NOT NULL,
-  away_team_id TEXT NOT NULL,
-  start_time TIMESTAMPTZ NOT NULL,
-  status TEXT DEFAULT 'SCHEDULED' CHECK (status IN ('SCHEDULED', 'LIVE', 'FINAL')),
-  home_score INTEGER,
-  away_score INTEGER,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Picks
-CREATE TABLE picks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  week_id TEXT REFERENCES weeks(id) ON DELETE CASCADE,
-  game_id UUID REFERENCES games(id) ON DELETE CASCADE,
-  selected_team_id TEXT NOT NULL,
-  confidence INTEGER NOT NULL CHECK (confidence BETWEEN 1 AND 5),
-  points_earned INTEGER DEFAULT 0,
-  result TEXT DEFAULT 'PENDING' CHECK (result IN ('WIN', 'LOSS', 'PENDING')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, week_id, game_id),
-  UNIQUE(user_id, week_id, confidence)
-);
-
--- Indexes
-CREATE INDEX idx_picks_user_week ON picks(user_id, week_id);
-CREATE INDEX idx_games_week ON games(week_id);
-CREATE INDEX idx_picks_game ON picks(game_id);
-
--- Row Level Security (RLS)
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE picks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE games ENABLE ROW LEVEL SECURITY;
-ALTER TABLE weeks ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Profiles are viewable by everyone" ON profiles FOR SELECT USING (true);
-CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Picks are viewable by everyone" ON picks FOR SELECT USING (true);
-CREATE POLICY "Users can insert own picks" ON picks FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own picks" ON picks FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own picks" ON picks FOR DELETE USING (auth.uid() = user_id);
-CREATE POLICY "Games are viewable by everyone" ON games FOR SELECT USING (true);
-CREATE POLICY "Weeks are viewable by everyone" ON weeks FOR SELECT USING (true);
-```
+See `supabase/migrations/` for schema changes and `supabase/README.md` for how to
+apply them. The SQL that used to sit here was never the whole truth — the live
+database was altered by hand and drifted from it (`games.nhl_game_id` and the
+`updated_at` columns are used by the running code but appeared in no document),
+so it has been removed rather than left to mislead.
 
 ---
 
