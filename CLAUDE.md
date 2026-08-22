@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Web-based app to allow the creation and maintenance of an NHL game picking pool.  There is a prototype which can be used as a guide to the project.   
+Web-based app to allow the creation and maintenance of an NHL game picking pool.  There is a prototype which can be used as a guide to the project. This is a TypeScript project (hockey picks app) deployed on Netlify with a Supabase backend. Always verify builds pass locally before committing with `npm run build`.  
 
 ## Commands shortcut (if these are seen as only word in prompt)
 
@@ -23,6 +23,12 @@ Web-based app to allow the creation and maintenance of an NHL game picking pool.
 - check TASKS.md if it exists before starting your work
 - mark completed tasks immediately in TASKS.md
 - add newly discovered tasks
+
+## Git Workflow 
+After implementing a fix, always commit AND push in the same flow unless told otherwise. User expects git operations to complete end-to-end.
+
+## Bug Fixing 
+- When fixing bugs, always check for existing bad data in the database that needs cleanup — don't assume a code fix alone resolves state issues.
 
 ## General App Requirements
 User Accounts - Simple email-based signup and login (no social auth required).
