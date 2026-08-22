@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, Clock, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
-import type { Week, Game, Pick } from '../../types';
+import type { Game, Pick } from '../../types';
 import { GameCard } from '../GameCard';
 import { Button } from '../Button';
 
 interface PicksViewProps {
   selectedWeekId: string;
-  weeks: Week[];
   isLocked: boolean;
   timeLeft: string;
   currentPicks: Partial<Pick>[];
@@ -26,7 +25,6 @@ interface PicksViewProps {
  */
 export const PicksView: React.FC<PicksViewProps> = ({
   selectedWeekId,
-  weeks,
   isLocked,
   timeLeft,
   currentPicks,

@@ -41,5 +41,3 @@ export const TEAMS: Record<string, Team> = {
   CGY: { id: 'CGY', name: 'Flames', abbreviation: 'CGY', city: 'Calgary', logoColor: '#C8102E' },
   SEA: { id: 'SEA', name: 'Kraken', abbreviation: 'SEA', city: 'Seattle', logoColor: '#99D9D9' },
 };
-
-export const CURRENT_WEEK_ID = 'week-5';

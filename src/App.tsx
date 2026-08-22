@@ -129,7 +129,7 @@ function App() {
         setLoadingSchedule(true);
         const dateStr = currentWeek.startDate;
 
-        const response = await fetch('/.netlify/functions/gemini-schedule', {
+        const response = await fetch('/.netlify/functions/nhl-schedule', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ dateStr })
@@ -492,7 +492,6 @@ function App() {
           currentWeek ? (
             <PicksView
               selectedWeekId={currentWeek.id}
-              weeks={[currentWeek]}
               isLocked={isLocked}
               timeLeft={timeLeft}
               currentPicks={currentPicks}

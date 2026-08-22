@@ -22,7 +22,13 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# Environment variables (set these in Netlify dashboard)
-# VITE_SUPABASE_URL
-# VITE_SUPABASE_ANON_KEY
-# GEMINI_API_KEY (server-side only, for functions)
+# Environment variables (set these in the Netlify dashboard)
+#
+# Client bundle — these are inlined into public JS, so they must not be secret:
+#   VITE_SUPABASE_URL
+#   VITE_SUPABASE_ANON_KEY
+#   VITE_SYNC_WEEK_SECRET   (see docs/OPERATIONS.md — not actually secret)
+#
+# Functions only (never sent to the browser):
+#   SUPABASE_SERVICE_ROLE_KEY
+#   SYNC_WEEK_SECRET
