@@ -20,14 +20,116 @@ Migrations are written to be idempotent, so re-running one is safe.
 | --- | --- | --- |
 | `0001_lock_profile_privileged_columns.sql` | ☑ applied 2026-08-21 | Stops a member from promoting themselves to `admin` by editing their own `profiles` row |
 | `0002_allow_signup_profile_insert.sql` | ☑ applied 2026-08-21 | Lets a new user create their own `profiles` row at signup, without being able to set `role` |
+| `0003_pick_visibility.sql` | ☐ not applied | Hides other players' picks until the week's Saturday 10:00 ET deadline passes |
+| `0004_enforce_deadline.sql` | ☐ not applied | Enforces that deadline for writes too, so picks cannot be changed after games start |
 
 Tick the boxes above once the pool admin has run them against production. Apply
-them in order — 0002 assumes 0001 is already in place.
+them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
+on the `picks_revealed()` function created by 0003.
 
 Both were verified after applying: `authenticated` now holds UPDATE only on
 `name`/`avatar` and INSERT only on `id`/`email`/`name`/`avatar` — `role` appears
 in neither — and the `Users can update own profile` policy carries a non-null
 `WITH CHECK`.
+
+## 0003 and 0004 — pick secrecy and the deadline
+
+These two close complementary halves of the same hole. `0003` stops a member
+reading everyone else's sheet before the deadline; `0004` stops anyone rewriting
+their own sheet after it. Applying only `0003` leaves late edits possible.
+
+### What 0003 can and cannot do
+
+Row Level Security governs the anon and authenticated API keys — the app, the
+browser console, the REST endpoint. It does **not** apply to the Supabase
+dashboard, the service-role key, or `pg_dump`.
+
+So if the pool admin is also a player, `0003` removes the easy path — open
+devtools, run one query, read everyone's sheet — but not the privileged one.
+Anyone with dashboard access can still read every row. Genuinely sealing picks
+from the project owner would need a commit–reveal or client-side encryption
+scheme, which trades away recoverability: a lost key means lost picks, and picks
+stop working across devices. For a pool this size that is usually the wrong
+trade, but it is a real choice, not an oversight.
+
+### Before applying 0003
+
+The deployed policies were created by hand and their names may not match what
+the migration expects to drop. Run this first:
+
+```sql
+select tablename, policyname, cmd, roles, qual, with_check
+  from pg_policies
+ where schemaname = 'public' and tablename = 'picks'
+ order by cmd, policyname;
+```
+
+If the existing SELECT policy is named something other than `picks_select_all`
+or `Picks are viewable by everyone`, add that name to the `drop policy if exists`
+list in `0003` before running it. Otherwise the permissive policy survives
+alongside the new one — Postgres ORs permissive policies together — and picks
+stay readable while appearing to be protected.
+
+### After applying 0003
+
+Log in as an ordinary member during an **open** week and run this in the browser
+console:
+
+```js
+const { data } = await supabase.from('picks').select('*').eq('week_id', 'week-YYYY-MM-DD');
+console.log(data.length, new Set(data.map(p => p.user_id)).size);
+```
+
+It must return only that member's own five rows, from exactly one user id.
+Repeat after the Saturday deadline and confirm the whole league appears.
+
+### Timing
+
+Apply on a weekday. Never between Friday evening and the Saturday 10:00 ET
+deadline — if something is wrong, that is the one window where it stops people
+using the pool.
+
+### How these were tested
+
+Both files were run against a local PostgreSQL 16 instance loaded with a replica
+of the live schema (including the permissive policies as currently deployed) and
+three fixture users — two members and an admin — with picks in one open week and
+one past week. Verified:
+
+- Before `0003`, any member reads all three players' picks for the open week.
+  After it, each member — **including the admin** — reads only their own, while
+  the past week reveals the full league.
+- The deadline instants computed in SQL match `getPickDeadline()` in
+  `src/lib/timezone.ts` exactly, on seven dates spanning both DST transitions.
+  The database and the countdown lock at the same moment.
+- With `0004`, editing an open-week pick succeeds; updating, inserting, or
+  deleting a locked-week pick is refused.
+- **Scoring still works after the deadline.** Against a role created with
+  `BYPASSRLS` — as Supabase's `service_role` is — `sync-week`'s writes all
+  succeed on a locked week: games marked FINAL, all picks resolved with points
+  awarded, and the week marked COMPLETED. This is the case that would have been
+  bad to get wrong, since standings would have silently stopped updating.
+- Both files apply three times in a row with no error and leave exactly four
+  policies on `picks`.
+
+One behaviour to know: a blocked **UPDATE** or **DELETE** affects zero rows
+rather than raising an error — that is how a Postgres `USING` clause works. A
+blocked **INSERT** does raise. Since `savePicks` deletes then inserts, a
+late-submission attempt surfaces as an insert error, which the UI already
+displays.
+
+### The one real cost of 0004
+
+`savePicks` deletes a member's picks and then inserts the new set, with no
+transaction. Today, if the clock crosses 10:00 ET in the gap between those two
+statements, the insert still succeeds. With `0004` applied it is refused, and
+that member's picks are gone.
+
+The window is milliseconds wide and only exists for someone submitting at
+literally 10:00:00 on a Saturday. It is a real widening of an existing bug, not a
+new one, and a `save_picks` RPC doing both statements in one transaction closes
+it completely. Worth knowing; not worth withholding the migration over, since
+the alternative is leaving late edits possible all season.
 
 ## Signup and email confirmation
 
