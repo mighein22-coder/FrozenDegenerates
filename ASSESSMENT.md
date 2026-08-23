@@ -172,8 +172,7 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     syncs on login and on the results view for every member, so an admin-only gate
     would freeze scoring until an admin signed in — breaking the "compute results
     when a user logs in" requirement. Any authenticated member is the correct gate
-  - **Pending on the pool admin:** delete `VITE_SYNC_WEEK_SECRET` and
-    `SYNC_WEEK_SECRET` from the Netlify dashboard after deploying
+  - Both env vars deleted from the Netlify dashboard 2026-08-23
 
 ---
 
