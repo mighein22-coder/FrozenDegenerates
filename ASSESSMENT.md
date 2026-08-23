@@ -129,14 +129,19 @@ Treat the pool's standings as tamperable until 15–18 are closed.
   - Verified not to affect scoring: `sync-week` uses the service-role key, which
     bypasses RLS, so picks still resolve and weeks still close after the deadline
 
-- [ ] **25. `savePicks` Can Lose a Member's Picks**
-  - Deletes all picks for the week then inserts the new set, with no transaction.
-    A failure between the two loses them. #6 above marked this fixed, but only
+- [x] **25. `savePicks` Can Lose a Member's Picks** ✅
+  - Deleted all picks for the week then inserted the new set, with no transaction.
+    A failure between the two lost them. #6 above marked this fixed, but only
     the error message improved
-  - Fix: a `save_picks` RPC doing both in one transaction
-  - Note: #24 marginally widens this. A submission landing exactly on the 10:00
-    boundary can now have its insert refused after the delete succeeded. The
-    window is milliseconds; the RPC closes it
+  - Fixed by `supabase/migrations/0005_save_picks_rpc.sql`: `savePicks` now makes
+    a single `save_picks` RPC call that does both statements in one transaction
+  - The RPC runs as the caller, not `security definer`, so the `0004` policies
+    still govern it and the deadline rule is not duplicated. `now()` is fixed for
+    the transaction, so `picks_revealed()` answers the delete and the insert
+    identically — the 10:00 boundary case #24 opened is refused whole, with the
+    member's previous sheet intact
+  - **Pending on the pool admin:** apply `0005`, and run the partial-sheet audit
+    query in `supabase/README.md` to check whether the old bug already lost one
 
 - [ ] **26. `VITE_SYNC_WEEK_SECRET` Is Not Secret**
   - Vite inlines `VITE_*` into the public bundle, so the shared secret guarding

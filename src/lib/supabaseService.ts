@@ -225,7 +225,11 @@ export const supabaseService = {
   },
 
   /**
-   * Save user picks (replaces all picks for that week)
+   * Save user picks (replaces all picks for that week).
+   *
+   * Delegates to the `save_picks` RPC (supabase/migrations/0005) so the delete
+   * and the insert happen in one database transaction. Done as two requests
+   * from here, a failure between them left the member with no picks at all.
    */
   async savePicks(
     userId: string,
@@ -256,44 +260,24 @@ export const supabaseService = {
       throw new Error('Confidence values must be unique (1-5)');
     }
 
-    // Save picks atomically: delete old, insert new
-    // This is wrapped in error handling to catch network failures
-    // NOTE: Requires RLS DELETE and INSERT policies:
-    //   CREATE POLICY "Users can delete own picks" ON picks FOR DELETE USING (auth.uid() = user_id);
-    //   CREATE POLICY "Users can insert own picks" ON picks FOR INSERT WITH CHECK (auth.uid() = user_id);
+    // The three checks above are a fast fail for a readable message. The RPC
+    // repeats all of them against the database, which is the copy that counts:
+    // it sees the real clock, and it cannot be skipped from the console.
+    const { error } = await supabase.rpc('save_picks', {
+      p_user_id: userId,
+      p_week_id: weekId,
+      p_picks: picks.map(p => ({
+        gameId: p.gameId,
+        selectedTeamId: p.selectedTeamId,
+        confidence: p.confidence
+      }))
+    });
 
-    try {
-      // Delete existing picks for this week
-      const { error: deleteError } = await supabase
-        .from('picks')
-        .delete()
-        .eq('user_id', userId)
-        .eq('week_id', weekId);
-
-      if (deleteError) {
-        console.error('Delete failed:', deleteError);
-        throw new Error(`Failed to clear existing picks: ${deleteError.message}`);
-      }
-
-      // Insert new picks
-      const { error: insertError } = await supabase
-        .from('picks')
-        .insert(picks.map(p => ({
-          user_id: userId,
-          week_id: weekId,
-          game_id: p.gameId,
-          selected_team_id: p.selectedTeamId,
-          confidence: p.confidence
-        })));
-
-      if (insertError) {
-        // Critical: insertion failed after deletion — picks may be lost
-        console.error('Insert failed after deletion:', insertError);
-        throw new Error(`Failed to save picks (picks may have been lost): ${insertError.message}`);
-      }
-    } catch (error: any) {
-      // Re-throw with clear message about potential data loss
-      throw new Error(error.message || 'Failed to save picks. Please try again.');
+    if (error) {
+      // Nothing was written: the RPC is one transaction, so a failure here
+      // leaves whatever picks were already saved untouched.
+      console.error('save_picks failed:', error);
+      throw new Error(`Failed to save picks: ${error.message}`);
     }
   },
 
