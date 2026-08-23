@@ -401,17 +401,22 @@ export const supabaseService = {
    */
   async syncScores(weekId: string): Promise<{ updated: number; errors: string[] }> {
     try {
-      const syncSecret = import.meta.env.VITE_SYNC_WEEK_SECRET;
-      if (!syncSecret) {
-        console.warn('VITE_SYNC_WEEK_SECRET not configured');
-        return { updated: 0, errors: ['Sync secret not configured'] };
+      // The function authenticates the caller by this token, so a signed-out
+      // visitor simply cannot reach it. Previously both halves of a shared
+      // secret shipped in the public bundle, which authenticated nobody.
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        console.warn('syncScores called without a session');
+        return { updated: 0, errors: ['Not signed in'] };
       }
 
       const response = await fetch('/.netlify/functions/sync-week', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-sync-secret': syncSecret
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ weekId })
       });

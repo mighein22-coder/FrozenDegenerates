@@ -25,15 +25,20 @@ Anything prefixed `VITE_` is compiled into the JS every visitor downloads.
 |---|---|
 | `VITE_SUPABASE_URL` | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Anon key; safe to publish, RLS is what protects data |
-| `VITE_SYNC_WEEK_SECRET` | Sent as `x-sync-secret` when the app triggers a sync. **Despite the name this is not secret** — it ships in the bundle. Tracked in `TASKS.md`. |
 
 **Functions only — never sent to the browser.**
 
 | Name | Purpose |
 |---|---|
 | `SUPABASE_SERVICE_ROLE_KEY` | Full database access, bypasses RLS. Used by `sync-week`. |
-| `SYNC_WEEK_SECRET` | Server side of the `x-sync-secret` check. |
 | `SUPABASE_URL` | Optional; `sync-week` falls back to this if `VITE_SUPABASE_URL` is unset. |
+
+`VITE_SYNC_WEEK_SECRET` and `SYNC_WEEK_SECRET` are gone. `sync-week` now
+authenticates the caller's Supabase access token instead of a shared secret —
+the client half of that pair was inlined into the public bundle, so it
+authenticated nobody. **Delete both from the Netlify dashboard** once this is
+deployed; nothing reads them, and leaving them there implies a check that no
+longer exists.
 
 ## Functions
 
@@ -41,7 +46,7 @@ Anything prefixed `VITE_` is compiled into the JS every visitor downloads.
 |---|---|---|
 | `nhl-schedule` | App, when a week has no games yet | Proxies `api-web.nhle.com/v1/schedule/{date}` and returns rows shaped for insert. No auth. |
 | `gemini-schedule` | Legacy path | Re-export of `nhl-schedule`, kept so cached browser bundles don't 404. Safe to delete after a release. |
-| `sync-week` | App on login and on the results view; admin panel | The workhorse. Service-role client: marks games FINAL with scores, resolves PENDING picks (win → points = confidence), and marks the week COMPLETED once all games are final or it is past 4:00 AM ET Sunday. Idempotent. |
+| `sync-week` | App on login and on the results view; admin panel | The workhorse. Service-role client: marks games FINAL with scores, resolves PENDING picks (win → points = confidence), and marks the week COMPLETED once all games are final or it is past 4:00 AM ET Sunday. Idempotent. **Requires a `Bearer` Supabase access token** from any signed-in member — not admin-only, since scoring has to happen whoever opens the app. |
 | `team-records` | Picks view | `standings/now` → `{ABBR: "W-L-OTL"}`, cached an hour. No auth. |
 
 `netlify/functions/_shared/etTime.ts` re-exports the app's timezone helpers so

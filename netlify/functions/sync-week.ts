@@ -15,14 +15,6 @@ const handler: Handler = async (event: HandlerEvent) => {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   }
 
-  // Authenticate request via shared secret header
-  const syncSecret = process.env.SYNC_WEEK_SECRET;
-  const providedSecret = event.headers['x-sync-secret'] || event.headers['X-Sync-Secret'];
-  if (!syncSecret || providedSecret !== syncSecret) {
-    console.warn('[SYNC WEEK] Unauthorized request attempt');
-    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
-  }
-
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -42,6 +34,42 @@ const handler: Handler = async (event: HandlerEvent) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
+
+  // Authenticate the caller: any signed-in member will do.
+  //
+  // This used to compare a shared secret sent as `x-sync-secret`. The client
+  // half of that pair was `VITE_SYNC_WEEK_SECRET`, and Vite inlines `VITE_*`
+  // into the bundle every visitor downloads — so the secret was printed in
+  // public JS and this endpoint was effectively unauthenticated. Anyone could
+  // read it out of the bundle and drive a service-role function at will.
+  //
+  // A Supabase access token cannot be published that way: it is per-user, it
+  // expires, and Supabase is the one that vouches for it. Signing out or
+  // deleting a member revokes their access without redeploying anything.
+  //
+  // Deliberately NOT gated on `profiles.role`. Scoring is meant to happen when
+  // any member opens the app (App.tsx syncs on login and on the results view),
+  // so an admin-only gate would leave scores frozen until an admin logged in.
+  // The blast radius of a member calling this is bounded: it takes one weekId,
+  // reads the NHL API, and writes only the scores and pick results that week
+  // already implies. It cannot be steered to write anything of the caller's
+  // choosing.
+  const authHeader = event.headers['authorization'] || event.headers['Authorization'];
+  const token = authHeader?.replace(/^Bearer /i, '').trim();
+
+  if (!token) {
+    console.warn('[SYNC WEEK] Request with no bearer token');
+    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
+  }
+
+  const { data: auth, error: authError } = await adminClient.auth.getUser(token);
+
+  if (authError || !auth?.user) {
+    console.warn('[SYNC WEEK] Rejected token:', authError?.message ?? 'no user for token');
+    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
+  }
+
+  console.log(`[SYNC WEEK] Authenticated as ${auth.user.id}`);
 
   try {
     const body = JSON.parse(event.body || '{}');

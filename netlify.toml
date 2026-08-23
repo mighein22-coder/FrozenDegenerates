@@ -27,8 +27,9 @@
 # Client bundle — these are inlined into public JS, so they must not be secret:
 #   VITE_SUPABASE_URL
 #   VITE_SUPABASE_ANON_KEY
-#   VITE_SYNC_WEEK_SECRET   (see docs/OPERATIONS.md — not actually secret)
 #
 # Functions only (never sent to the browser):
 #   SUPABASE_SERVICE_ROLE_KEY
-#   SYNC_WEEK_SECRET
+#
+# sync-week authenticates the caller's Supabase access token, so there is no
+# shared secret to configure on either side.

@@ -21,6 +21,9 @@ Treat the pool's standings as tamperable until 15–18 are closed.
 - [x] **3. `sync-week` Function Has No Authentication** ✅
   - Added `x-sync-secret` header validation in function
   - Frontend now passes `VITE_SYNC_WEEK_SECRET` with each sync request
+  - **Superseded by #26.** That header check authenticated nobody: the client's
+    copy of the secret shipped in the public bundle. Now a verified Supabase
+    access token
 
 - [x] **4. Picks View Shows Blank Screen on Load Failure** ✅
   - Added loading spinner and error state with retry button for Picks view
@@ -140,13 +143,22 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     the transaction, so `picks_revealed()` answers the delete and the insert
     identically — the 10:00 boundary case #24 opened is refused whole, with the
     member's previous sheet intact
-  - **Pending on the pool admin:** apply `0005`, and run the partial-sheet audit
-    query in `supabase/README.md` to check whether the old bug already lost one
+  - Applied 2026-08-23. `prosecdef` verified false, and the partial-sheet audit
+    query in `supabase/README.md` returned zero rows — no sheet was lost while
+    the bug was live
 
-- [ ] **26. `VITE_SYNC_WEEK_SECRET` Is Not Secret**
+- [x] **26. `VITE_SYNC_WEEK_SECRET` Is Not Secret** ✅
   - Vite inlines `VITE_*` into the public bundle, so the shared secret guarding
-    `sync-week` ships to every visitor
-  - Fix: verify a Supabase JWT and check `profiles.role` instead
+    `sync-week` shipped to every visitor — the endpoint was effectively
+    unauthenticated, and it holds a service-role client
+  - Fixed: the client sends its Supabase access token as `Authorization: Bearer`,
+    and `sync-week` verifies it with `auth.getUser()` before doing anything
+  - **Not** gated on `profiles.role`, contrary to the original note here. `App.tsx`
+    syncs on login and on the results view for every member, so an admin-only gate
+    would freeze scoring until an admin signed in — breaking the "compute results
+    when a user logs in" requirement. Any authenticated member is the correct gate
+  - **Pending on the pool admin:** delete `VITE_SYNC_WEEK_SECRET` and
+    `SYNC_WEEK_SECRET` from the Netlify dashboard after deploying
 
 ---
 
