@@ -140,8 +140,9 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     the transaction, so `picks_revealed()` answers the delete and the insert
     identically — the 10:00 boundary case #24 opened is refused whole, with the
     member's previous sheet intact
-  - **Pending on the pool admin:** apply `0005`, and run the partial-sheet audit
-    query in `supabase/README.md` to check whether the old bug already lost one
+  - Applied 2026-08-23. `prosecdef` verified false, and the partial-sheet audit
+    query in `supabase/README.md` returned zero rows — no sheet was lost while
+    the bug was live
 
 - [ ] **26. `VITE_SYNC_WEEK_SECRET` Is Not Secret**
   - Vite inlines `VITE_*` into the public bundle, so the shared secret guarding

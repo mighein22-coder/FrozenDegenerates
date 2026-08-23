@@ -22,7 +22,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0002_allow_signup_profile_insert.sql` | ☑ applied 2026-08-21 | Lets a new user create their own `profiles` row at signup, without being able to set `role` |
 | `0003_pick_visibility.sql` | ☑ applied 2026-08-22 | Hides other players' picks until the week's Saturday 10:00 ET deadline passes |
 | `0004_enforce_deadline.sql` | ☑ applied 2026-08-22 | Enforces that deadline for writes too, so picks cannot be changed after games start |
-| `0005_save_picks_rpc.sql` | ☐ not applied | Replaces a pick sheet in one transaction, so a failed save can no longer lose the old picks |
+| `0005_save_picks_rpc.sql` | ☑ applied 2026-08-23 | Replaces a pick sheet in one transaction, so a failed save can no longer lose the old picks |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -147,9 +147,8 @@ knowing:
   submission that lands on the wrong side of 10:00 is refused whole, with the
   member's previous sheet still in place.
 
-Apply `0005` before anyone saves picks again — the client now calls the RPC and
-has no delete-then-insert path to fall back on, so saving fails outright until
-the function exists.
+Applied and verified 2026-08-23: `prosecdef` is false, confirming the function
+runs as the caller and the `0004` policies still govern it.
 
 #### Has the old bug already eaten a sheet?
 
@@ -166,6 +165,9 @@ select p.user_id, pr.name, p.week_id, count(*) as picks
 having count(*) <> 5
  order by p.week_id, pr.name;
 ```
+
+Run 2026-08-23 alongside applying `0005`: zero rows — no sheet was lost while
+the bug was live. Worth re-running after any report of picks vanishing.
 
 Any row is a sheet that needs repairing by hand — ask that member what they
 picked, or, for a week already scored, correct it and re-run the sync so the

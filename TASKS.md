@@ -80,11 +80,9 @@ Nothing currently in flight.
 - [x] **`savePicks` can lose picks.** ✅ Fixed by
       `supabase/migrations/0005_save_picks_rpc.sql` — `savePicks` now makes one
       `save_picks` RPC call that deletes and inserts in a single transaction, so
-      the boundary case `0004` opened can no longer lose a sheet. **Needs the
-      pool admin to apply `0005`;** until then saving picks fails outright, since
-      the client no longer has a delete-then-insert path. Also run the
-      partial-sheet audit query in `supabase/README.md`, which finds any sheet the
-      old bug already lost.
+      the boundary case `0004` opened can no longer lose a sheet. `0005` applied
+      2026-08-23; the partial-sheet audit query in `supabase/README.md` returned
+      zero rows, so nothing was lost while the bug was live.
 - [ ] `VITE_SYNC_WEEK_SECRET` is inlined into the public JS bundle, so the shared
       secret guarding `sync-week` is readable by anyone. Replace with a verified
       Supabase JWT plus an admin role check.
