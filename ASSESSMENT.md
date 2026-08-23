@@ -51,15 +51,26 @@ Treat the pool's standings as tamperable until 15–18 are closed.
   - Applied 2026-08-23. The two damage-check queries were run first and came back
     clean — no forged scores, so nothing needed repairing.
 
-- [ ] **16. Anyone Can Rewrite Game Scores** 🔴
+- [x] **16. Anyone Can Rewrite Game Scores** ✅
   - `games` carries `Anyone can update games` (UPDATE, roles=`public`,
     `USING (true)`) and `Anyone can insert games` (INSERT, roles=`public`,
     `WITH CHECK (true)`). Not limited to members — the anon key is in the
     browser bundle.
   - Any visitor can set `home_score` / `away_score` / `status` on any game,
     which then drives `calculatePickResults` and the standings.
-  - Fix: drop the public write policies; scores are written by the
-    `sync-scores` function, which should use the service role.
+  - Same wound as #15, one table upstream: locking `picks.points_earned` achieves
+    little if the game a pick refers to can be flipped instead, leaving
+    `sync-week` to compute a wrong result from data it trusts.
+  - Fixed by `supabase/migrations/0007_lock_game_score_writes.sql`. Both public
+    policies dropped; UPDATE and DELETE revoked from client roles outright;
+    INSERT narrowed to the six columns the schedule feed supplies, with a trigger
+    forcing client-inserted games to `SCHEDULED`/`null`/`null`.
+  - INSERT survives because seeding a week's schedule is a normal member action
+    (`saveGames`), not an admin one. Scoring is unaffected — `sync-week` uses the
+    service-role key, as this entry anticipated.
+  - `weeks` deliberately untouched; where its writes belong is #10, still open.
+  - **Pending on the pool admin:** run the two damage-check queries at the bottom
+    of `0007`, then apply it.
 
 - [ ] **17. Everyone's Picks Are Public Before the Deadline** 🔴
   - `picks` SELECT policy is `USING (true)` for `public`, unconditionally.

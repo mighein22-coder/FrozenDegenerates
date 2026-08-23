@@ -97,6 +97,14 @@ Nothing currently in flight.
       `picks` revoked outright, INSERT narrowed to the five pick columns, plus a
       trigger guard. `0006` applied 2026-08-23; the two damage-check queries were
       run first and came back clean, so no forged score ever made the standings.
+- [x] **Anyone can rewrite game scores** (ASSESSMENT #16). ✅ `games` carried
+      `UPDATE using (true)` and `INSERT with check (true)` for role `public` —
+      the anon key, so even a logged-out visitor could set `home_score` /
+      `away_score` / `status` and move the standings. Fixed by
+      `supabase/migrations/0007_lock_game_score_writes.sql`: public policies
+      dropped, client UPDATE/DELETE revoked, INSERT narrowed to the six schedule
+      columns, plus a trigger guard. **Pool admin: run the two damage-check
+      queries at the bottom of `0007`, then apply it.**
 
 ### Planned features
 
