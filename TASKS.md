@@ -95,9 +95,8 @@ Nothing currently in flight.
       `PENDING` picks, so a forged score stuck for the season. Fixed by
       `supabase/migrations/0006_lock_pick_score_columns.sql`: client UPDATE on
       `picks` revoked outright, INSERT narrowed to the five pick columns, plus a
-      trigger guard. **Pool admin: run the two damage-check queries at the bottom
-      of `0006` and then apply it.** The migration stops new forgeries; it cannot
-      undo one already in the standings.
+      trigger guard. `0006` applied 2026-08-23; the two damage-check queries were
+      run first and came back clean, so no forged score ever made the standings.
 
 ### Planned features
 

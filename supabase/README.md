@@ -23,7 +23,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0003_pick_visibility.sql` | ☑ applied 2026-08-22 | Hides other players' picks until the week's Saturday 10:00 ET deadline passes |
 | `0004_enforce_deadline.sql` | ☑ applied 2026-08-22 | Enforces that deadline for writes too, so picks cannot be changed after games start |
 | `0005_save_picks_rpc.sql` | ☑ applied 2026-08-23 | Replaces a pick sheet in one transaction, so a failed save can no longer lose the old picks |
-| `0006_lock_pick_score_columns.sql` | ☐ not applied | Stops a member writing their own `points_earned`/`result` — the columns the standings are summed from |
+| `0006_lock_pick_score_columns.sql` | ☑ applied 2026-08-23 | Stops a member writing their own `points_earned`/`result` — the columns the standings are summed from |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -199,10 +199,13 @@ Nothing in the client updates `picks` — `savePicks` goes through the `save_pic
 RPC, which only deletes and inserts — so removing UPDATE costs no functionality.
 `sync-week` is unaffected: it connects as `service_role`.
 
-**Run the two damage-check queries at the bottom of the migration before
-applying.** They find picks whose stored score disagrees with the game's actual
-outcome. The migration stops new forgeries; it cannot know about old ones, and
-the standings will keep showing any that are already there.
+Applied 2026-08-23. The two damage-check queries at the bottom of the migration
+were run first and came back clean: no pick's stored score disagreed with its
+game's outcome, and nothing was scored ahead of a finished game. Nobody had
+exploited this before it was closed.
+
+Those queries stay useful — they also catch scoring bugs, not just forgeries.
+Worth re-running if the standings ever look wrong.
 
 ## Signup and email confirmation
 

@@ -48,9 +48,8 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     that `savePicks` goes through the `save_picks` RPC. INSERT is narrowed to the
     five pick columns, and a trigger blocks the two score columns as a second
     layer.
-  - **Pending on the pool admin:** apply `0006`, and run the two damage-check
-    queries at the bottom of it first — they find scores already forged, which
-    the migration cannot undo.
+  - Applied 2026-08-23. The two damage-check queries were run first and came back
+    clean — no forged scores, so nothing needed repairing.
 
 - [ ] **16. Anyone Can Rewrite Game Scores** 🔴
   - `games` carries `Anyone can update games` (UPDATE, roles=`public`,
