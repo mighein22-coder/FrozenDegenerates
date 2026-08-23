@@ -90,6 +90,15 @@ Nothing currently in flight.
       planned — scoring runs whenever any member opens the app, so admin-only
       would freeze it. **Pool admin: delete `VITE_SYNC_WEEK_SECRET` and
       `SYNC_WEEK_SECRET` from Netlify once deployed.**
+- [x] **Members can write their own scores** (ASSESSMENT #15). ✅ `points_earned`
+      and `result` — the columns the standings are summed from — were writable
+      by any member via UPDATE *or* INSERT, and `sync-week` only ever re-scores
+      `PENDING` picks, so a forged score stuck for the season. Fixed by
+      `supabase/migrations/0006_lock_pick_score_columns.sql`: client UPDATE on
+      `picks` revoked outright, INSERT narrowed to the five pick columns, plus a
+      trigger guard. **Pool admin: run the two damage-check queries at the bottom
+      of `0006` and then apply it.** The migration stops new forgeries; it cannot
+      undo one already in the standings.
 
 ### Planned features
 
