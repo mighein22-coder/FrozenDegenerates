@@ -105,6 +105,15 @@ Nothing currently in flight.
       dropped, client UPDATE/DELETE revoked, INSERT narrowed to the six schedule
       columns, plus a trigger guard. `0007` applied 2026-08-23, with the two
       damage-check queries run beforehand.
+- [ ] 🔴 **`weeks` is writable by any member, which reopens the deadline**
+      (ASSESSMENT #18, second half). `picks_revealed()` reads
+      `weeks.saturday_date`, and `weeks` still carries `UPDATE USING (true)` for
+      authenticated plus `INSERT` for `public`. A member can move their own
+      deadline with one statement, then re-submit a sheet after the games finish
+      and let `sync-week` score it against known results. This defeats `0003`–`0006`
+      without breaking any of them. **Highest-priority remaining item.** Fix:
+      `0007`'s treatment applied to `weeks`, plus a trigger tying `saturday_date`
+      to the date in the week `id`. Overlaps #10.
 
 ### Planned features
 
