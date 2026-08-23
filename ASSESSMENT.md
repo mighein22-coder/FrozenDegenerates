@@ -69,8 +69,7 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     (`saveGames`), not an admin one. Scoring is unaffected — `sync-week` uses the
     service-role key, as this entry anticipated.
   - `weeks` deliberately untouched; where its writes belong is #10, still open.
-  - **Pending on the pool admin:** run the two damage-check queries at the bottom
-    of `0007`, then apply it.
+  - Applied 2026-08-23, with the two damage-check queries run beforehand.
 
 - [ ] **17. Everyone's Picks Are Public Before the Deadline** 🔴
   - `picks` SELECT policy is `USING (true)` for `public`, unconditionally.

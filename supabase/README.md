@@ -24,7 +24,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0004_enforce_deadline.sql` | ☑ applied 2026-08-22 | Enforces that deadline for writes too, so picks cannot be changed after games start |
 | `0005_save_picks_rpc.sql` | ☑ applied 2026-08-23 | Replaces a pick sheet in one transaction, so a failed save can no longer lose the old picks |
 | `0006_lock_pick_score_columns.sql` | ☑ applied 2026-08-23 | Stops a member writing their own `points_earned`/`result` — the columns the standings are summed from |
-| `0007_lock_game_score_writes.sql` | ☐ not applied | Stops anyone — including logged-out visitors — rewriting game scores, which decide every pick |
+| `0007_lock_game_score_writes.sql` | ☑ applied 2026-08-23 | Stops anyone — including logged-out visitors — rewriting game scores, which decide every pick |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -240,11 +240,12 @@ the admin panel updates `weeks.status` from the browser. Deciding where those
 writes belong is ASSESSMENT #10, still open — `0007` closes the scoring hole and
 stops there.
 
-**Run the two damage-check queries at the bottom of the migration before
-applying.** There is no perfect test — the database has no record of what the
-NHL actually reported — but they find the shapes a tampered row takes, the
-clearest being a FINAL game ending level, which the NHL regular season does not
-produce.
+Applied 2026-08-23, with the two damage-check queries run beforehand.
+
+Those queries stay useful: there is no perfect test — the database has no record
+of what the NHL actually reported — but they find the shapes a tampered row
+takes, the clearest being a FINAL game ending level, which the NHL regular season
+does not produce. Worth re-running if a week's results ever look wrong.
 
 ## Signup and email confirmation
 

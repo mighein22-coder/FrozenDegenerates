@@ -103,8 +103,8 @@ Nothing currently in flight.
       `away_score` / `status` and move the standings. Fixed by
       `supabase/migrations/0007_lock_game_score_writes.sql`: public policies
       dropped, client UPDATE/DELETE revoked, INSERT narrowed to the six schedule
-      columns, plus a trigger guard. **Pool admin: run the two damage-check
-      queries at the bottom of `0007`, then apply it.**
+      columns, plus a trigger guard. `0007` applied 2026-08-23, with the two
+      damage-check queries run beforehand.
 
 ### Planned features
 
