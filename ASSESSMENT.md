@@ -28,14 +28,28 @@ Treat the pool's standings as tamperable until 15–18 are closed.
 - [x] **4. Picks View Shows Blank Screen on Load Failure** ✅
   - Added loading spinner and error state with retry button for Picks view
 
-- [ ] **15. Members Can Write Their Own Scores** 🔴
+- [x] **15. Members Can Write Their Own Scores** ✅
   - `picks` UPDATE policy is `USING (auth.uid() = user_id)` with no `WITH CHECK`
     and no column restriction, and `authenticated` holds UPDATE on every column.
   - `getStandings()` sums `points_earned` and counts `result` straight off the
     `picks` rows — so a member can set `points_earned` on their own picks and
     take first place in one REST call. No exploit needed beyond the anon key.
-  - Fix: restrict client UPDATE on `picks` to `selected_team_id` / `confidence`;
-    `points_earned` and `result` should be service-role only.
+  - **The same hole existed on INSERT**, which this entry missed: the insert
+    policy checks `user_id` and the deadline but no columns, so a sheet could be
+    inserted already scored.
+  - **And it was permanent, not transient.** `sync-week` resolves only picks with
+    `result = 'PENDING'`, so a pick already claiming `'WIN'` is skipped by every
+    later sync. A forged score is never corrected.
+  - `0004` did not close this: its `WITH CHECK` tests ownership and the deadline,
+    both of which a member forging their own open-week picks satisfies.
+  - Fixed by `supabase/migrations/0006_lock_pick_score_columns.sql`. Rather than
+    narrowing UPDATE to `selected_team_id`/`confidence` as planned here, client
+    UPDATE is revoked outright — nothing in the client updates `picks` at all now
+    that `savePicks` goes through the `save_picks` RPC. INSERT is narrowed to the
+    five pick columns, and a trigger blocks the two score columns as a second
+    layer.
+  - Applied 2026-08-23. The two damage-check queries were run first and came back
+    clean — no forged scores, so nothing needed repairing.
 
 - [ ] **16. Anyone Can Rewrite Game Scores** 🔴
   - `games` carries `Anyone can update games` (UPDATE, roles=`public`,
@@ -157,8 +171,7 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     syncs on login and on the results view for every member, so an admin-only gate
     would freeze scoring until an admin signed in — breaking the "compute results
     when a user logs in" requirement. Any authenticated member is the correct gate
-  - **Pending on the pool admin:** delete `VITE_SYNC_WEEK_SECRET` and
-    `SYNC_WEEK_SECRET` from the Netlify dashboard after deploying
+  - Both env vars deleted from the Netlify dashboard 2026-08-23
 
 ---
 

@@ -23,6 +23,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0003_pick_visibility.sql` | ☑ applied 2026-08-22 | Hides other players' picks until the week's Saturday 10:00 ET deadline passes |
 | `0004_enforce_deadline.sql` | ☑ applied 2026-08-22 | Enforces that deadline for writes too, so picks cannot be changed after games start |
 | `0005_save_picks_rpc.sql` | ☑ applied 2026-08-23 | Replaces a pick sheet in one transaction, so a failed save can no longer lose the old picks |
+| `0006_lock_pick_score_columns.sql` | ☑ applied 2026-08-23 | Stops a member writing their own `points_earned`/`result` — the columns the standings are summed from |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -172,6 +173,39 @@ the bug was live. Worth re-running after any report of picks vanishing.
 Any row is a sheet that needs repairing by hand — ask that member what they
 picked, or, for a week already scored, correct it and re-run the sync so the
 standings follow.
+
+## 0006 — members could write their own scores
+
+`computeStandings` sums `picks.points_earned` and counts `picks.result` straight
+off the rows. Both columns were writable by any logged-in member: the UPDATE
+policy said which *rows* you may touch, never which *columns*, and
+`authenticated` held UPDATE on all of them. One REST call with the anon key took
+first place. The same gap existed on INSERT — a sheet could be inserted
+pre-scored.
+
+`0004` did not close it. Its `WITH CHECK` tests ownership and the deadline, and
+a member forging their own picks in an open week passes both.
+
+The part that makes it stick: `sync-week` resolves only picks with
+`result = 'PENDING'`. A pick already claiming `'WIN'` is skipped by every later
+sync, so a forged score is never corrected — it lasts the season.
+
+`0006` closes it in two layers, the same shape as `0001` on `profiles`:
+`authenticated` loses UPDATE on `picks` outright and may INSERT only the five
+columns a sheet consists of, and a `BEFORE` trigger rejects any client-role
+change to the two score columns even if a later migration re-grants UPDATE.
+
+Nothing in the client updates `picks` — `savePicks` goes through the `save_picks`
+RPC, which only deletes and inserts — so removing UPDATE costs no functionality.
+`sync-week` is unaffected: it connects as `service_role`.
+
+Applied 2026-08-23. The two damage-check queries at the bottom of the migration
+were run first and came back clean: no pick's stored score disagreed with its
+game's outcome, and nothing was scored ahead of a finished game. Nobody had
+exploited this before it was closed.
+
+Those queries stay useful — they also catch scoring bugs, not just forgeries.
+Worth re-running if the standings ever look wrong.
 
 ## Signup and email confirmation
 

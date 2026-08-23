@@ -88,8 +88,15 @@ Nothing currently in flight.
       Supabase access token the function verifies via `auth.getUser()`. Gated on
       *any* authenticated member rather than an admin role check as first
       planned — scoring runs whenever any member opens the app, so admin-only
-      would freeze it. **Pool admin: delete `VITE_SYNC_WEEK_SECRET` and
-      `SYNC_WEEK_SECRET` from Netlify once deployed.**
+      would freeze it. Both env vars deleted from Netlify 2026-08-23.
+- [x] **Members can write their own scores** (ASSESSMENT #15). ✅ `points_earned`
+      and `result` — the columns the standings are summed from — were writable
+      by any member via UPDATE *or* INSERT, and `sync-week` only ever re-scores
+      `PENDING` picks, so a forged score stuck for the season. Fixed by
+      `supabase/migrations/0006_lock_pick_score_columns.sql`: client UPDATE on
+      `picks` revoked outright, INSERT narrowed to the five pick columns, plus a
+      trigger guard. `0006` applied 2026-08-23; the two damage-check queries were
+      run first and came back clean, so no forged score ever made the standings.
 
 ### Planned features
 

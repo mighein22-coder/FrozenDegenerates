@@ -33,12 +33,11 @@ Anything prefixed `VITE_` is compiled into the JS every visitor downloads.
 | `SUPABASE_SERVICE_ROLE_KEY` | Full database access, bypasses RLS. Used by `sync-week`. |
 | `SUPABASE_URL` | Optional; `sync-week` falls back to this if `VITE_SUPABASE_URL` is unset. |
 
-`VITE_SYNC_WEEK_SECRET` and `SYNC_WEEK_SECRET` are gone. `sync-week` now
-authenticates the caller's Supabase access token instead of a shared secret —
-the client half of that pair was inlined into the public bundle, so it
-authenticated nobody. **Delete both from the Netlify dashboard** once this is
-deployed; nothing reads them, and leaving them there implies a check that no
-longer exists.
+`VITE_SYNC_WEEK_SECRET` and `SYNC_WEEK_SECRET` are gone — removed from the
+Netlify dashboard 2026-08-23. `sync-week` authenticates the caller's Supabase
+access token instead of a shared secret; the client half of that pair was
+inlined into the public bundle, so it authenticated nobody. Do not reintroduce
+either name.
 
 ## Functions
 
