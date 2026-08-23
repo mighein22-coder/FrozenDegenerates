@@ -24,6 +24,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0004_enforce_deadline.sql` | ☑ applied 2026-08-22 | Enforces that deadline for writes too, so picks cannot be changed after games start |
 | `0005_save_picks_rpc.sql` | ☑ applied 2026-08-23 | Replaces a pick sheet in one transaction, so a failed save can no longer lose the old picks |
 | `0006_lock_pick_score_columns.sql` | ☑ applied 2026-08-23 | Stops a member writing their own `points_earned`/`result` — the columns the standings are summed from |
+| `0007_lock_game_score_writes.sql` | ☑ applied 2026-08-23 | Stops anyone — including logged-out visitors — rewriting game scores, which decide every pick |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -206,6 +207,45 @@ exploited this before it was closed.
 
 Those queries stay useful — they also catch scoring bugs, not just forgeries.
 Worth re-running if the standings ever look wrong.
+
+## 0007 — anyone could rewrite game scores
+
+`games` carried two policies written for `public` rather than `authenticated`:
+
+```
+"Anyone can update games"  UPDATE  using (true)
+"Anyone can insert games"  INSERT  with check (true)
+```
+
+`public` covers every request the anon key can make, and the anon key ships in
+the browser bundle. So this was not a members-only hole — **a logged-out visitor
+could set `home_score`, `away_score` or `status` on any game.** Those columns
+decide every pick's result, so rewriting one rewrites the standings.
+
+This is the same wound `0006` closed, one table upstream. Locking
+`picks.points_earned` achieves little if someone can instead flip the game a
+pick refers to and have `sync-week` compute a wrong result from data it trusts.
+
+`0007` drops both public policies, revokes UPDATE and DELETE on `games` from
+client roles outright, and narrows INSERT to the six columns the schedule feed
+supplies — plus a trigger that forces any client-inserted game to
+`SCHEDULED`/`null`/`null` and refuses client updates entirely.
+
+INSERT survives because seeding a week's schedule is a normal member action:
+`saveGames` fills a week the first time anyone opens it. Scores are written only
+by `sync-week`, which uses the service-role key and is unaffected.
+
+**`weeks` is deliberately left alone.** The client also inserts week rows, and
+the admin panel updates `weeks.status` from the browser. Deciding where those
+writes belong is ASSESSMENT #10, still open — `0007` closes the scoring hole and
+stops there.
+
+Applied 2026-08-23, with the two damage-check queries run beforehand.
+
+Those queries stay useful: there is no perfect test — the database has no record
+of what the NHL actually reported — but they find the shapes a tampered row
+takes, the clearest being a FINAL game ending level, which the NHL regular season
+does not produce. Worth re-running if a week's results ever look wrong.
 
 ## Signup and email confirmation
 
