@@ -82,7 +82,7 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     fix proposed here. Verified after applying — `picks` carries exactly one
     SELECT policy, so no permissive policy survived the swap.
 
-- [ ] **18. Pick Deadline Is Not Enforced Server-Side** 🔴 — half closed
+- [x] **18. Pick Deadline Is Not Enforced Server-Side** ✅
   - `picks` UPDATE/DELETE policies carry no deadline condition, and `weeks`
     has `Allow authenticated users to update weeks` (UPDATE, `USING (true)`)
     plus `Anyone can insert weeks` (INSERT, roles=`public`).
@@ -108,10 +108,16 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     together — none of them are wrong, they all just trust this one column.
   - `Anyone can insert weeks` is addressed to `public`, so a logged-out visitor
     can create week rows as well.
-  - Fix: the same treatment `0007` gave `games`, plus a trigger tying
-    `saturday_date` to the date encoded in the week `id` and requiring it to be
-    a Saturday, so the deadline cannot be restated. Overlaps #10 — decide there
-    whether week creation moves server-side entirely.
+  - Fixed by `supabase/migrations/0008_lock_week_deadline_writes.sql`: INSERT
+    limited to members and UPDATE to admins (`is_admin()`), members may insert
+    four columns and update only `status`, and a trigger **derives
+    `saturday_date` from the week `id`** rather than trusting it. The client
+    already builds both from the same string, so this costs nothing and removes
+    the ability to state a deadline at all.
+  - Settles the write half of #10 as well: week and game creation stay
+    client-side, but locked down, rather than moving server-side.
+  - **Pending on the pool admin:** run the damage-check queries at the bottom of
+    `0008`, then apply it.
 
 ---
 
