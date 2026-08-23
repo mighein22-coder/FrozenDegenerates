@@ -22,6 +22,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0002_allow_signup_profile_insert.sql` | ☑ applied 2026-08-21 | Lets a new user create their own `profiles` row at signup, without being able to set `role` |
 | `0003_pick_visibility.sql` | ☑ applied 2026-08-22 | Hides other players' picks until the week's Saturday 10:00 ET deadline passes |
 | `0004_enforce_deadline.sql` | ☑ applied 2026-08-22 | Enforces that deadline for writes too, so picks cannot be changed after games start |
+| `0005_save_picks_rpc.sql` | ☐ not applied | Replaces a pick sheet in one transaction, so a failed save can no longer lose the old picks |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -123,18 +124,52 @@ blocked **INSERT** does raise. Since `savePicks` deletes then inserts, a
 late-submission attempt surfaces as an insert error, which the UI already
 displays.
 
-### The one real cost of 0004
+### The one real cost of 0004 — closed by 0005
 
-`savePicks` deletes a member's picks and then inserts the new set, with no
-transaction. Today, if the clock crosses 10:00 ET in the gap between those two
-statements, the insert still succeeds. With `0004` applied it is refused, and
-that member's picks are gone.
+`savePicks` deleted a member's picks and then inserted the new set, with no
+transaction. Before `0004`, if the clock crossed 10:00 ET in the gap between
+those two statements the insert still succeeded. With `0004` applied it was
+refused, and that member's picks were gone.
 
-The window is milliseconds wide and only exists for someone submitting at
-literally 10:00:00 on a Saturday. It is a real widening of an existing bug, not a
-new one, and a `save_picks` RPC doing both statements in one transaction closes
-it completely. Worth knowing; not worth withholding the migration over, since
-the alternative is leaving late edits possible all season.
+The window was milliseconds wide and only existed for someone submitting at
+literally 10:00:00 on a Saturday. It was a real widening of an existing bug, not
+a new one, and `0005_save_picks_rpc.sql` closes it: the delete and the insert
+now run inside one `save_picks` call, so they either both apply or neither does.
+
+`save_picks` runs as the caller, not `security definer`. Two consequences worth
+knowing:
+
+* The policies from `0003`/`0004` still govern every row it touches. The
+  function grants no authority the caller lacked, and there is no second copy of
+  the deadline rule inside it to drift away from the policy.
+* `now()` is the transaction timestamp, fixed for the whole transaction, so
+  `picks_revealed()` gives the delete and the insert the same answer. A
+  submission that lands on the wrong side of 10:00 is refused whole, with the
+  member's previous sheet still in place.
+
+Apply `0005` before anyone saves picks again — the client now calls the RPC and
+has no delete-then-insert path to fall back on, so saving fails outright until
+the function exists.
+
+#### Has the old bug already eaten a sheet?
+
+Every member/week pairing should hold exactly five picks; a partial sheet is
+what the old failure left behind, and the app renders it as an ordinary
+incomplete entry rather than flagging it. Run this in the SQL editor — expect
+zero rows:
+
+```sql
+select p.user_id, pr.name, p.week_id, count(*) as picks
+  from public.picks p
+  left join public.profiles pr on pr.id = p.user_id
+ group by p.user_id, pr.name, p.week_id
+having count(*) <> 5
+ order by p.week_id, pr.name;
+```
+
+Any row is a sheet that needs repairing by hand — ask that member what they
+picked, or, for a week already scored, correct it and re-run the sync so the
+standings follow.
 
 ## Signup and email confirmation
 
