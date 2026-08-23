@@ -83,9 +83,13 @@ Nothing currently in flight.
       the boundary case `0004` opened can no longer lose a sheet. `0005` applied
       2026-08-23; the partial-sheet audit query in `supabase/README.md` returned
       zero rows, so nothing was lost while the bug was live.
-- [ ] `VITE_SYNC_WEEK_SECRET` is inlined into the public JS bundle, so the shared
-      secret guarding `sync-week` is readable by anyone. Replace with a verified
-      Supabase JWT plus an admin role check.
+- [x] `VITE_SYNC_WEEK_SECRET` is inlined into the public JS bundle, so the shared
+      secret guarding `sync-week` is readable by anyone. ✅ Replaced with a
+      Supabase access token the function verifies via `auth.getUser()`. Gated on
+      *any* authenticated member rather than an admin role check as first
+      planned — scoring runs whenever any member opens the app, so admin-only
+      would freeze it. **Pool admin: delete `VITE_SYNC_WEEK_SECRET` and
+      `SYNC_WEEK_SECRET` from Netlify once deployed.**
 
 ### Planned features
 
