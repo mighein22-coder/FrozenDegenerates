@@ -25,6 +25,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0005_save_picks_rpc.sql` | ☑ applied 2026-08-23 | Replaces a pick sheet in one transaction, so a failed save can no longer lose the old picks |
 | `0006_lock_pick_score_columns.sql` | ☑ applied 2026-08-23 | Stops a member writing their own `points_earned`/`result` — the columns the standings are summed from |
 | `0007_lock_game_score_writes.sql` | ☑ applied 2026-08-23 | Stops anyone — including logged-out visitors — rewriting game scores, which decide every pick |
+| `0008_lock_week_deadline_writes.sql` | ☐ not applied | Stops a member moving `weeks.saturday_date` — the column every deadline rule reads |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -246,6 +247,49 @@ Those queries stay useful: there is no perfect test — the database has no reco
 of what the NHL actually reported — but they find the shapes a tampered row
 takes, the clearest being a FINAL game ending level, which the NHL regular season
 does not produce. Worth re-running if a week's results ever look wrong.
+
+## 0008 — the deadline was a member-writable column
+
+`picks_revealed()`, which `0003` and `0004` both hang off, reads
+`weeks.saturday_date`. And `weeks` carried:
+
+```
+"Allow authenticated users to update weeks"  UPDATE  using (true)
+"Anyone can insert weeks"                    INSERT  with check (true)  [public]
+```
+
+No column restriction. So any member could restate when their own week ends:
+
+```sql
+update weeks set saturday_date = '2027-01-01' where id = 'week-2026-10-11';
+```
+
+`picks_revealed()` then returns false, `0004`'s write policies allow writes
+again, and re-submitting a sheet after the games are final leaves five fresh
+`PENDING` rows for the next `sync-week` to score against known results.
+
+**This defeated `0003`, `0004`, `0005` and `0006` together.** None of those are
+wrong — they all just trusted this one column, and anyone with an account could
+write it.
+
+`0008` closes it in three layers: INSERT limited to members and UPDATE to admins;
+column privileges allowing members to insert four columns and update only
+`status`; and a trigger that **derives `saturday_date` from the week `id`** on
+insert rather than trusting what was sent, and refuses any client change to a
+week's date or number afterwards.
+
+The app already builds both from the same string — `getCurrentWeek` sets
+`id = 'week-' || <Saturday>` and `saturday_date` to the same date — so deriving
+costs an honest caller nothing and removes the client's ability to state a
+deadline at all.
+
+The admin status toggle keeps working; `status` is not what locks picks, the date
+is. `sync-week` is unaffected — service-role key.
+
+**Run the damage-check queries at the bottom of the migration before applying.**
+The trigger fixes future writes; it cannot repair a week whose date was already
+moved, and a moved date silently widens both the visibility window (`0003`) and
+the write window (`0004`) for that week.
 
 ## Signup and email confirmation
 

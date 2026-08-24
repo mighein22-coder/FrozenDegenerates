@@ -71,22 +71,53 @@ Treat the pool's standings as tamperable until 15–18 are closed.
   - `weeks` deliberately untouched; where its writes belong is #10, still open.
   - Applied 2026-08-23, with the two damage-check queries run beforehand.
 
-- [ ] **17. Everyone's Picks Are Public Before the Deadline** 🔴
+- [x] **17. Everyone's Picks Are Public Before the Deadline** ✅
   - `picks` SELECT policy is `USING (true)` for `public`, unconditionally.
   - A member can read every other member's picks before Saturday's deadline,
     which defeats the point of the pool.
-  - Fix: gate SELECT on other users' picks behind the week's deadline having
-    passed; own picks always visible.
+  - **Duplicate of #21** — same finding, recorded twice. Fixed by
+    `supabase/migrations/0003_pick_visibility.sql`, applied 2026-08-22:
+    `picks_select_own_or_revealed` gates other members' sheets behind
+    `picks_revealed(week_id)` and always shows your own, which is exactly the
+    fix proposed here. Verified after applying — `picks` carries exactly one
+    SELECT policy, so no permissive policy survived the swap.
 
-- [ ] **18. Pick Deadline Is Not Enforced Server-Side** 🔴
+- [x] **18. Pick Deadline Is Not Enforced Server-Side** ✅
   - `picks` UPDATE/DELETE policies carry no deadline condition, and `weeks`
     has `Allow authenticated users to update weeks` (UPDATE, `USING (true)`)
     plus `Anyone can insert weeks` (INSERT, roles=`public`).
   - The 10 AM ET lock is enforced only in the client (`arePicksLocked` gating
     the UI). A member can change picks after games start, and can flip a week's
     status back to `OPEN`.
-  - Fix: add a deadline predicate to the `picks` write policies; restrict
-    `weeks` writes to the service role.
+  - **The `picks` half is done** — duplicate of #24, fixed by
+    `0004_enforce_deadline.sql`, applied 2026-08-22. The write policies now carry
+    `not picks_revealed(week_id)`.
+  - **The `weeks` half is still open, and it undoes the other half.**
+    `picks_revealed()` reads `weeks.saturday_date`. With `UPDATE USING (true)`
+    and no column restriction, any member can move that date and thereby move
+    their own deadline:
+
+    ```sql
+    update weeks set saturday_date = '2027-01-01' where id = 'week-2026-10-11';
+    ```
+
+    From there `picks_revealed()` returns false, `0004`'s policies allow writes
+    again, and re-submitting a sheet after the games are final produces five
+    fresh `PENDING` rows that the next `sync-week` scores against known results.
+    A perfect week, on demand. This defeats `0003`, `0004`, `0005` and `0006`
+    together — none of them are wrong, they all just trust this one column.
+  - `Anyone can insert weeks` is addressed to `public`, so a logged-out visitor
+    can create week rows as well.
+  - Fixed by `supabase/migrations/0008_lock_week_deadline_writes.sql`: INSERT
+    limited to members and UPDATE to admins (`is_admin()`), members may insert
+    four columns and update only `status`, and a trigger **derives
+    `saturday_date` from the week `id`** rather than trusting it. The client
+    already builds both from the same string, so this costs nothing and removes
+    the ability to state a deadline at all.
+  - Settles the write half of #10 as well: week and game creation stay
+    client-side, but locked down, rather than moving server-side.
+  - **Pending on the pool admin:** run the damage-check queries at the bottom of
+    `0008`, then apply it.
 
 ---
 

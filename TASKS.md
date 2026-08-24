@@ -70,10 +70,13 @@ Nothing currently in flight.
 
 ### Needs a decision or an action from the pool admin
 
-- [ ] #10 Verify RLS on `weeks` and `games`. The anon client inserts weeks and
-      games and updates week status, so the deployed policies must permit any
-      authenticated member to do the same. Decide whether to move those writes
-      server-side or gate them on `profiles.role`.
+- [x] #10 Verify RLS on `weeks` and `games`. ✅ Decided: those writes stay
+      client-side but locked down, rather than moving server-side. Seeding a week
+      and its schedule is a normal member action, so `0007` and `0008` keep
+      member INSERT while narrowing it to the columns the app actually supplies,
+      revoke client UPDATE except the admin-gated week `status`, and add trigger
+      guards. Moving seeding into a function remains possible later; it is no
+      longer a security question.
 
 ### Known issues not yet scheduled
 
@@ -105,6 +108,17 @@ Nothing currently in flight.
       dropped, client UPDATE/DELETE revoked, INSERT narrowed to the six schedule
       columns, plus a trigger guard. `0007` applied 2026-08-23, with the two
       damage-check queries run beforehand.
+- [x] ✅ **`weeks` was writable by any member, which reopened the deadline**
+      (ASSESSMENT #18, second half). `picks_revealed()` reads
+      `weeks.saturday_date`, and `weeks` carried `UPDATE USING (true)` for
+      authenticated plus `INSERT` for `public`. A member could move their own
+      deadline with one statement, then re-submit a sheet after the games finished
+      and let `sync-week` score it against known results — defeating `0003`–`0006`
+      without breaking any of them. Fixed by
+      `supabase/migrations/0008_lock_week_deadline_writes.sql`, which derives
+      `saturday_date` from the week `id` instead of trusting the client.
+      **Pool admin: run the damage-check queries at the bottom of `0008`, then
+      apply it.**
 
 ### Planned features
 
