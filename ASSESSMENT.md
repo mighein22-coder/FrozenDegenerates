@@ -116,8 +116,8 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     the ability to state a deadline at all.
   - Settles the write half of #10 as well: week and game creation stay
     client-side, but locked down, rather than moving server-side.
-  - **Pending on the pool admin:** run the damage-check queries at the bottom of
-    `0008`, then apply it.
+  - Applied 2026-08-23. The damage-check queries were run first and came back
+    clean — no deadline had been moved.
 
 ---
 
