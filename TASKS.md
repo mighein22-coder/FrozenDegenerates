@@ -116,9 +116,9 @@ Nothing currently in flight.
       and let `sync-week` score it against known results — defeating `0003`–`0006`
       without breaking any of them. Fixed by
       `supabase/migrations/0008_lock_week_deadline_writes.sql`, which derives
-      `saturday_date` from the week `id` instead of trusting the client.
-      **Pool admin: run the damage-check queries at the bottom of `0008`, then
-      apply it.**
+      `saturday_date` from the week `id` instead of trusting the client. `0008`
+      applied 2026-08-23; the damage-check queries were run first and came back
+      clean, so no deadline was ever moved.
 
 ### Planned features
 

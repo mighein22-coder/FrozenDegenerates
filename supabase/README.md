@@ -25,7 +25,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0005_save_picks_rpc.sql` | ☑ applied 2026-08-23 | Replaces a pick sheet in one transaction, so a failed save can no longer lose the old picks |
 | `0006_lock_pick_score_columns.sql` | ☑ applied 2026-08-23 | Stops a member writing their own `points_earned`/`result` — the columns the standings are summed from |
 | `0007_lock_game_score_writes.sql` | ☑ applied 2026-08-23 | Stops anyone — including logged-out visitors — rewriting game scores, which decide every pick |
-| `0008_lock_week_deadline_writes.sql` | ☐ not applied | Stops a member moving `weeks.saturday_date` — the column every deadline rule reads |
+| `0008_lock_week_deadline_writes.sql` | ☑ applied 2026-08-23 | Stops a member moving `weeks.saturday_date` — the column every deadline rule reads |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -286,10 +286,13 @@ deadline at all.
 The admin status toggle keeps working; `status` is not what locks picks, the date
 is. `sync-week` is unaffected — service-role key.
 
-**Run the damage-check queries at the bottom of the migration before applying.**
-The trigger fixes future writes; it cannot repair a week whose date was already
-moved, and a moved date silently widens both the visibility window (`0003`) and
-the write window (`0004`) for that week.
+Applied 2026-08-23. The damage-check queries were run first and came back clean:
+every week's `saturday_date` matched the date in its own `id`, and all fell on a
+Saturday. Nobody had moved a deadline before it was closed.
+
+The queries stay useful — a week whose date disagrees with its id would also
+point at a bug in week creation. Worth re-running if a week ever locks at the
+wrong time.
 
 ## Signup and email confirmation
 
