@@ -256,12 +256,21 @@ Treat the pool's standings as tamperable until 15–18 are closed.
 
 ## Immediate Security Checks (Do Manually)
 
-1. **Check git history for committed secrets:**
+1. [ ] **Check git history for committed secrets:**
    ```bash
    git log --all --full-history -- .env src/.env.local
    ```
-   If they appear, rotate the Gemini API key immediately.
+   If they appear, rotate the Gemini API key immediately. `src/.env` holds a real
+   `GEMINI_API_KEY`, so this is worth doing even though `.gitignore` covers it now.
+   **Still outstanding.**
 
-2. **Verify Supabase RLS** — confirm UPDATE on `games` and `picks` is restricted to service role only.
+2. [x] **Verify Supabase RLS** — confirm UPDATE on `games` and `picks` is restricted to service role only. ✅
+   Done by migration rather than by inspection: `0006` revoked client UPDATE on
+   `picks` and `0007` did the same for `games`, both with trigger guards, and
+   `0008` closed the `weeks.saturday_date` column the deadline rules read. All
+   applied and verified 2026-08-23.
 
-3. **Confirm Supabase public signups are disabled** — Authentication → Settings → disable "Enable email signups".
+3. [x] **Confirm Supabase public signups are disabled** — Authentication → Settings → disable "Enable email signups". ✅
+   Confirmed disabled 2026-08-23. This one underpins the rest: every policy from
+   `0003` onward gates on "any authenticated member", which is only a meaningful
+   boundary while accounts cannot be self-created.
