@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { MemberAvatar } from '../MemberAvatar';
 import { User as UserIcon, KeyRound, Mail } from 'lucide-react';
 import { Button } from '../Button';
 import { supabase, type Profile } from '../../lib/supabase';
@@ -155,20 +156,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ userId, profile, onP
               Avatar URL <span className="text-slate-600">(optional)</span>
             </label>
             <div className="flex items-center gap-4">
-              {avatar.trim() ? (
-                <img
-                  src={avatar.trim()}
-                  alt=""
-                  className="w-12 h-12 rounded-full object-cover border border-slate-700 shrink-0 bg-slate-800"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
-                  }}
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 shrink-0 flex items-center justify-center text-slate-500 font-display text-lg">
-                  {(name.trim()[0] || '?').toUpperCase()}
-                </div>
-              )}
+              {/* Live preview of what the league will see. Keyed on the URL so
+                  typing a new one clears a previous broken-image state. */}
+              <MemberAvatar
+                key={avatar.trim()}
+                avatar={avatar}
+                name={name}
+                className="w-12 h-12 text-lg"
+              />
               <input
                 id="settings-avatar"
                 type="url"

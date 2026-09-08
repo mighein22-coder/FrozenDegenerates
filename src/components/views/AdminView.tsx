@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { MemberAvatar } from '../MemberAvatar';
+import { InvitesPanel } from '../InvitesPanel';
 import { supabaseService } from '../../lib/supabaseService';
 import { supabase } from '../../lib/supabase';
 import type { Week } from '../../types';
@@ -14,6 +16,7 @@ type Status = 'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR';
  * Admin panel for league management
  * - Sync scores for a specific week
  * - Toggle week status (OPEN / LOCKED / COMPLETED)
+ * - Mint, revoke and audit invite codes
  * - View league users
  */
 export const AdminView: React.FC<AdminViewProps> = ({ allWeeks, leagueUsers }) => {
@@ -170,6 +173,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ allWeeks, leagueUsers }) =
         </div>
       </div>
 
+      {/* Invites */}
+      <InvitesPanel />
+
       {/* Users Section */}
       <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-6">
         <h2 className="text-xl font-semibold text-white mb-4">League Users ({leagueUsers.length})</h2>
@@ -177,16 +183,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ allWeeks, leagueUsers }) =
           {leagueUsers.map((user) => (
             <div key={user.id} className="bg-slate-950/50 border border-slate-700 rounded p-3">
               <div className="flex items-start space-x-3">
-                {user.avatar && (
-                  <img
-                    src={user.avatar}
-                    alt={user.name}
-                    className="w-8 h-8 rounded-full bg-slate-700"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                )}
+                <MemberAvatar avatar={user.avatar} name={user.name} className="w-8 h-8 text-sm" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-white truncate">{user.name}</p>
                   <p className="text-xs text-slate-500 truncate">{user.email}</p>

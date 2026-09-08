@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { MemberAvatar } from '../MemberAvatar';
 import type { User, Pick } from '../../types';
 import { TEAMS } from '../../constants';
 
@@ -45,13 +46,7 @@ export const TeamStatsView: React.FC<TeamStatsViewProps> = ({ leagueUsers, allPi
             className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col"
           >
             <div className="flex items-center gap-4 mb-6">
-              {user.avatar && (
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="w-12 h-12 rounded-full border-2 border-slate-800"
-                />
-              )}
+              <MemberAvatar avatar={user.avatar} name={user.name} className="w-12 h-12 text-lg" />
               <div>
                 <h3 className="text-lg font-bold text-white">{user.name}</h3>
                 <span className="text-xs text-slate-500 uppercase tracking-widest">{user.role}</span>

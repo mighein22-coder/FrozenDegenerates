@@ -14,6 +14,7 @@ import { Sidebar } from './components/layout/Sidebar';
 
 // Views
 import { LoginView } from './components/views/LoginView';
+import { RedeemInviteView } from './components/views/RedeemInviteView';
 import { AuthCallbackView } from './components/views/AuthCallbackView';
 import { DashboardView } from './components/views/DashboardView';
 import { PicksView } from './components/views/PicksView';
@@ -27,7 +28,18 @@ import { PUBLIC_ROUTES } from './routes';
 
 function App() {
   // Authentication
-  const { user, profile, loading: authLoading, signIn, signOut, refreshProfile } = useAuth();
+  const {
+    user,
+    profile,
+    loading: authLoading,
+    profileError,
+    pendingRedeemError,
+    signIn,
+    signOut,
+    signUp,
+    redeem,
+    refreshProfile
+  } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -506,9 +518,65 @@ function App() {
     );
   }
 
-  // Signed out
+  // Signed out. A real <Routes> rather than a bare LoginView, so /signup is a
+  // linkable URL the admin can send along with the invite code.
   if (!user) {
-    return <LoginView onLogin={signIn} />;
+    return (
+      <Routes>
+        <Route
+          path={PUBLIC_ROUTES.signup}
+          element={<LoginView onLogin={signIn} onSignUp={signUp} initialMode="signup" />}
+        />
+        <Route
+          path={PUBLIC_ROUTES.login}
+          element={<LoginView onLogin={signIn} onSignUp={signUp} initialMode="login" />}
+        />
+        <Route path="*" element={<Navigate to={PUBLIC_ROUTES.login} replace />} />
+      </Routes>
+    );
+  }
+
+  // The profile LOOKUP failed — which is not the same as having no profile.
+  // Showing the invite screen here would tell an existing member, on a dropped
+  // connection, that they are not in the pool; their real code would then be
+  // refused with "you are already a member", stranding them on a screen they
+  // cannot leave. Hence this branch sits above the one below.
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
+        <div className="max-w-md w-full bg-slate-900/50 border border-red-500/50 rounded-2xl p-8 text-center space-y-4">
+          <p className="text-red-400 font-semibold">Could not load your account.</p>
+          <p className="text-slate-400 text-sm">{profileError}</p>
+          <div className="flex gap-3 justify-center pt-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-ice-600 hover:bg-ice-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              Try again
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Signed in, but not a member. The normal middle of signing up — a mistyped
+  // code, or an account created without one. See RedeemInviteView.
+  if (!profile) {
+    return (
+      <RedeemInviteView
+        email={user.email ?? ''}
+        initialError={pendingRedeemError}
+        onRedeem={redeem}
+        onSignOut={handleLogout}
+      />
+    );
   }
 
   const leagueUsers = leagueProfiles.map(p => ({
@@ -676,6 +744,7 @@ function App() {
 
           {/* Signed-in users have no use for the login screen */}
           <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/signup" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

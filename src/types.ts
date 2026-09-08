@@ -71,3 +71,28 @@ export interface StandingsRow {
   weeklyScore: number;
   rank: number;
 }
+
+/**
+ * An invite code, as the Admin Panel sees it.
+ *
+ * A code is reusable and uncapped — one key goes out to the pool and everyone
+ * signs up with it. `expiresAt` is never null; what closes a code is that date
+ * passing, or an admin revoking it.
+ */
+export interface Invite {
+  code: string;
+  /** When set, only this address may redeem the code. */
+  email: string | null;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+}
+
+/** A member's arrival, joined to their profile. One row per member. */
+export interface InviteClaim {
+  code: string;
+  userId: string;
+  claimedAt: string;
+  name: string;
+  email: string;
+}

@@ -39,5 +39,6 @@ export const NAV_ROUTES: NavRoute[] = [
 /** Routes rendered outside the authenticated shell. */
 export const PUBLIC_ROUTES = {
   login: '/login',
+  signup: '/signup',
   authCallback: '/auth/callback'
 } as const;
