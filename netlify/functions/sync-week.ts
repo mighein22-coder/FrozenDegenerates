@@ -54,6 +54,12 @@ const handler: Handler = async (event: HandlerEvent) => {
   // reads the NHL API, and writes only the scores and pick results that week
   // already implies. It cannot be steered to write anything of the caller's
   // choosing.
+  //
+  // It IS gated on membership, though, which since 0009 is not the same as
+  // holding a token. Signups are open at the auth layer — the anon key is
+  // public — so "has a valid token" now includes anyone who made an account and
+  // never redeemed an invite. Requiring a profile row keeps this the last thing
+  // a non-member cannot reach.
   const authHeader = event.headers['authorization'] || event.headers['Authorization'];
   const token = authHeader?.replace(/^Bearer /i, '').trim();
 
@@ -67,6 +73,24 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (authError || !auth?.user) {
     console.warn('[SYNC WEEK] Rejected token:', authError?.message ?? 'no user for token');
     return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
+  }
+
+  // Read under the service-role key, so this does not depend on the caller's
+  // own visibility into `profiles`.
+  const { data: callerProfile, error: profileError } = await adminClient
+    .from('profiles')
+    .select('id')
+    .eq('id', auth.user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error('[SYNC WEEK] Membership lookup failed:', profileError.message);
+    return { statusCode: 500, body: JSON.stringify({ error: 'Could not verify membership' }) };
+  }
+
+  if (!callerProfile) {
+    console.warn(`[SYNC WEEK] Non-member ${auth.user.id} attempted a sync`);
+    return { statusCode: 403, body: JSON.stringify({ error: 'Members only' }) };
   }
 
   console.log(`[SYNC WEEK] Authenticated as ${auth.user.id}`);

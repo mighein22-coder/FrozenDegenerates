@@ -1,6 +1,6 @@
-import { supabase, type Profile, type WeekRow, type GameRow, type PickRow } from './supabase';
+import { supabase, type Profile, type WeekRow, type GameRow, type PickRow, type InviteRow } from './supabase';
 import { getTargetSaturdayDate, arePicksLocked } from './timezone';
-import type { User, Week, Game, Pick } from '../types';
+import type { User, Week, Game, Pick, Invite, InviteClaim } from '../types';
 
 /**
  * Maps a `weeks` row (snake_case, as stored) to the camelCase `Week` app type.
@@ -46,6 +46,17 @@ function mapPick(row: PickRow): Pick {
     confidence: row.confidence,
     pointsEarned: row.points_earned,
     result: row.result
+  };
+}
+
+/** Maps an `invites` row to the camelCase `Invite` app type. */
+function mapInvite(row: InviteRow): Invite {
+  return {
+    code: row.code,
+    email: row.email,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+    revokedAt: row.revoked_at
   };
 }
 
@@ -344,6 +355,99 @@ export const supabaseService = {
 
     if (error) throw new Error(`Failed to update profile: ${error.message}`);
     return data;
+  },
+
+  /**
+   * Turn an invite code into this user's profile.
+   *
+   * The only way a profile is created. `redeem_invite` is SECURITY DEFINER and
+   * reads the caller's email from `auth.users` rather than trusting anything
+   * sent from here — an email-bound code is only worth something if the binding
+   * cannot be asserted by the person redeeming it.
+   *
+   * Errors come back as readable sentences prefixed with the function name
+   * ("redeem_invite: that invite has expired"); callers strip the prefix.
+   */
+  async redeemInvite(code: string, name: string): Promise<Profile> {
+    const { data, error } = await supabase.rpc('redeem_invite', {
+      p_code: code,
+      p_name: name
+    });
+
+    if (error) throw error;
+    return data as Profile;
+  },
+
+  /**
+   * Mint an invite code. Admin only — enforced in the database by
+   * `is_admin()`, not here.
+   *
+   * Leave `email` off for the pool's shared key; set it to bind the code to one
+   * address. `expiresAt` defaults to 14 days in the database, which is too
+   * short for a code minted at the start of a season — pass one explicitly.
+   */
+  async createInvite(
+    options: { email?: string | null; expiresAt?: string | null } = {}
+  ): Promise<Invite> {
+    const { data, error } = await supabase.rpc('admin_create_invite', {
+      p_email: options.email?.trim() || null,
+      p_expires_at: options.expiresAt || null
+    });
+
+    if (error) throw error;
+    return mapInvite(data as InviteRow);
+  },
+
+  /** Close a code early. Claims already made are unaffected. Admin only. */
+  async revokeInvite(code: string): Promise<Invite> {
+    const { data, error } = await supabase.rpc('admin_revoke_invite', {
+      p_code: code
+    });
+
+    if (error) throw error;
+    return mapInvite(data as InviteRow);
+  },
+
+  /**
+   * Outstanding and spent codes, newest first.
+   *
+   * Returns an empty array for a non-admin rather than throwing: the RLS policy
+   * on `invites` is gated on `is_admin()`, so a member's select simply matches
+   * no rows. The Admin Panel is the only caller, and it is already behind the
+   * `adminOnly` route guard.
+   */
+  async listInvites(): Promise<Invite[]> {
+    const { data, error } = await supabase
+      .from('invites')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(`Failed to list invites: ${error.message}`);
+    return ((data ?? []) as InviteRow[]).map(mapInvite);
+  },
+
+  /** Who joined on which code, newest first. Admin only, same as above. */
+  async listInviteClaims(): Promise<InviteClaim[]> {
+    const { data, error } = await supabase
+      .from('invite_claims')
+      .select('code, user_id, claimed_at, profiles ( name, email )')
+      .order('claimed_at', { ascending: false });
+
+    if (error) throw new Error(`Failed to list invite claims: ${error.message}`);
+
+    // PostgREST embeds a to-one relation as an object, but types it as either
+    // shape depending on how it infers the FK. Normalise here so callers get
+    // one thing.
+    return (data ?? []).map((row: any) => {
+      const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+      return {
+        code: row.code,
+        userId: row.user_id,
+        claimedAt: row.claimed_at,
+        name: profile?.name ?? 'Unknown',
+        email: profile?.email ?? ''
+      };
+    });
   },
 
 

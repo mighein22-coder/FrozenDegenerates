@@ -62,3 +62,28 @@ export type PickRow = {
   created_at: string;
   updated_at: string;
 };
+
+/**
+ * An invite code. Admin-readable only — the RLS policy on `invites` is gated on
+ * `is_admin()`, so a member's select returns nothing rather than erroring.
+ *
+ * A code is REUSABLE and uncapped: one key goes out to the pool and everyone
+ * signs up with it. What closes it is `expires_at` (never null — the column
+ * carries a 14-day default) or an admin revoking it.
+ */
+export type InviteRow = {
+  code: string;
+  /** When set, only this address may redeem the code. Stored lower case. */
+  email: string | null;
+  created_by: string | null;
+  created_at: string;
+  expires_at: string;
+  revoked_at: string | null;
+};
+
+/** Who joined on which code. One row per member, enforced by `unique (user_id)`. */
+export type InviteClaimRow = {
+  code: string;
+  user_id: string;
+  claimed_at: string;
+};

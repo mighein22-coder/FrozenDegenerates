@@ -26,6 +26,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0006_lock_pick_score_columns.sql` | ☑ applied 2026-08-23 | Stops a member writing their own `points_earned`/`result` — the columns the standings are summed from |
 | `0007_lock_game_score_writes.sql` | ☑ applied 2026-08-23 | Stops anyone — including logged-out visitors — rewriting game scores, which decide every pick |
 | `0008_lock_week_deadline_writes.sql` | ☑ applied 2026-08-23 | Stops a member moving `weeks.saturday_date` — the column every deadline rule reads |
+| `0009_invites_and_membership.sql` | ☐ not yet applied | Self-serve signup gated by invite codes. Supersedes 0002: a `profiles` row can no longer be self-inserted, only created by `redeem_invite()` |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -318,3 +319,62 @@ different change, not an addition to `0002`.
   `profiles.email` in sync with `auth.users.email`.
 - `games` and `picks` still need the RLS review described in ASSESSMENT.md
   item #10.
+
+## The regression check
+
+Run this after **any** migration work, not just after 0009. It is the one query
+that catches the failure mode this schema is prone to: a migration being
+re-applied on its own and quietly putting back something a later one removed.
+
+`0001` and `0002` are full of `create or replace` and
+`drop policy … create policy`. Re-applying either by itself — a completely
+natural thing to do while editing one function — restores the self-insert policy
+and grant that `0009` exists to remove, and the pool is open again with nothing
+looking obviously wrong.
+
+```sql
+-- Expect ZERO rows from both. Any row is a reopened hole.
+
+-- 1. Policies that should not exist.
+select tablename, policyname, cmd, qual, with_check
+  from pg_policies
+ where schemaname = 'public'
+   and (
+     -- ANY insert policy on profiles, permissive or not. The one this is here
+     -- to catch is `with check (auth.uid() = id)`, which reads as restrictive
+     -- and is exactly the hole: it lets every signed-in user make themselves a
+     -- member.
+     (cmd = 'INSERT' and tablename = 'profiles')
+     -- Anyone-can-write on the schedule.
+  or (cmd = 'INSERT' and with_check = 'true' and tablename in ('weeks', 'games'))
+     -- Anyone-can-read, on the roster specifically. `weeks_select_all` and
+     -- `games_select_all` are `using (true)` on purpose — they are the NHL
+     -- schedule, and there is nothing in a fixture list worth hiding.
+  or (cmd = 'SELECT' and qual = 'true' and tablename = 'profiles')
+   );
+
+-- 2. Insert grants that should not exist.
+select grantee, table_name, column_name
+  from information_schema.column_privileges
+ where grantee in ('anon', 'authenticated')
+   and privilege_type = 'INSERT'
+   and table_name = 'profiles';
+```
+
+### Why there is no automated test harness
+
+The sibling NFL app runs these assertions against a throwaway Postgres
+(`supabase/test/run.sh`), applying every migration in order and re-checking
+afterwards. That cannot be ported here as-is, and the reason is worth recording:
+**no migration in this repo creates `profiles`, `weeks`, `games` or `picks`.**
+Those tables were made by hand in the dashboard, and `PLANNING.md` records that
+the SQL which used to document them drifted from production and was deleted.
+
+So a harness here would have to start from a *reconstructed* schema — a guess at
+the live shape, already known to be missing columns the app uses
+(`games.nhl_game_id`, the `updated_at` columns). Assertions passing against a
+guessed schema would be worse than no assertions: they would look like proof.
+
+Closing this properly means capturing production's real DDL into an `0000`
+baseline migration first. Until then, the two queries above run in the dashboard
+against the actual database, which is the thing that matters.

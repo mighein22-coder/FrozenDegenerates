@@ -1,4 +1,5 @@
 import React from 'react';
+import { MemberAvatar } from '../MemberAvatar';
 import type { Segment, StandingsRow, User } from '../../types';
 import { FULL_SEASON_LABEL } from '../../constants';
 
@@ -97,6 +98,8 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
               {row.rank}
             </span>
 
+            <MemberAvatar avatar={row.avatar} name={row.name} className="w-8 h-8 text-sm" />
+
             {/* Name + W-L */}
             <div className="flex-1 min-w-0">
               <div className={`font-medium truncate ${isCurrentUser ? 'text-ice-400' : 'text-slate-200'}`}>
@@ -163,10 +166,11 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
                 </td>
                 <td className="p-4">
                   <span
-                    className={`font-medium ${
+                    className={`font-medium flex items-center gap-3 ${
                       row.userId === currentUser?.id ? 'text-ice-400' : 'text-slate-200'
                     }`}
                   >
+                    <MemberAvatar avatar={row.avatar} name={row.name} />
                     {row.name}
                   </span>
                 </td>

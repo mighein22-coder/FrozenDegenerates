@@ -1,5 +1,13 @@
 -- 0002_allow_signup_profile_insert.sql
 --
+-- !! SUPERSEDED BY 0009_invites_and_membership.sql !!
+--
+-- The policy and grant below are what let any signed-in user make themselves a
+-- member of the pool. 0009 drops both and hands profile creation to
+-- redeem_invite() instead. This file is kept only as the record of what was
+-- applied on 2026-08-21 -- do NOT re-run it on its own, and if you ever do, run
+-- 0009 straight afterwards. Re-applying this alone reopens the hole.
+--
 -- Lets a newly signed-up user create their own `profiles` row.
 --
 -- The schema in PLANNING.md defines SELECT/UPDATE policies on `profiles` but

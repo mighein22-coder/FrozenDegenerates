@@ -1,4 +1,5 @@
 import React from 'react';
+import { MemberAvatar } from '../MemberAvatar';
 import { Lock, ShieldAlert, Clock, RefreshCw } from 'lucide-react';
 import type { Game, User, Pick, Week } from '../../types';
 
@@ -154,7 +155,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
           return (
             <div key={user.id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
               <div className="flex items-center gap-2 px-3 py-2 bg-slate-950/60 border-b border-slate-800">
-                {user.avatar && <img src={user.avatar} className="w-6 h-6 rounded-full" alt="" />}
+                <MemberAvatar avatar={user.avatar} name={user.name} />
                 <span className="font-medium text-slate-200 truncate">{user.name}</span>
               </div>
 
@@ -231,7 +232,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
               {leagueUsers.map(user => (
                 <tr key={user.id} className="hover:bg-slate-800/30">
                   <td className="sticky left-0 z-10 bg-slate-900 p-2 md:p-4 border-r border-slate-800 font-medium text-slate-200 flex items-center gap-3">
-                    {user.avatar && <img src={user.avatar} className="w-6 h-6 rounded-full" alt="" />}
+                    <MemberAvatar avatar={user.avatar} name={user.name} />
                     {user.name}
                   </td>
                   {weekGames.map(game => {

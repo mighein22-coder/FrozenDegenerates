@@ -120,9 +120,29 @@ Nothing currently in flight.
       applied 2026-08-23; the damage-check queries were run first and came back
       clean, so no deadline was ever moved.
 
+### Known issues not yet scheduled (continued)
+
+- [ ] **No `0000` baseline migration.** `profiles`, `weeks`, `games` and `picks`
+      were created by hand in the dashboard and no migration creates them, so
+      the migrations cannot be replayed onto an empty database. That is what
+      blocks porting the NFL app's `supabase/test/run.sh`, which applies every
+      migration in order to a throwaway Postgres and then asserts the policies —
+      the check that would have caught each of 0006–0009 before production.
+      Capturing production's real DDL into an `0000` baseline is the prerequisite.
+      Until then `supabase/README.md` carries the same regression check as two
+      queries to run in the dashboard.
+
 ### Planned features
 
 - [ ] Automated score sync on a schedule. Scores only move today when a human
       opens the app.
-- [ ] Self-serve signup gated by invites.
+- [x] Self-serve signup gated by invites. `0009_invites_and_membership.sql`
+      plus a signup mode on `LoginView`, `RedeemInviteView`, and an Invites
+      section in the Admin Panel. **This was a security fix too**: the pool was
+      safe only because email signups were switched off in the Supabase project,
+      and 0002's `profiles` INSERT policy meant anyone who got an account could
+      make themselves a member. A profile row is now created by `redeem_invite()`
+      and nothing else. Also closed `profiles` SELECT, which was `using (true)`
+      with no `to` clause — so the anon key in the public bundle could read every
+      member's email and role.
 - [ ] Email notifications — Friday pick reminder and a post-week results mail.

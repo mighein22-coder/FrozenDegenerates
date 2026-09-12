@@ -85,6 +85,7 @@ serves `index.html` for any path, so deep links and refreshes work.
 | `/history` | My History |
 | `/admin` | Admin panel (admins only) |
 | `/login` | Login screen |
+| `/signup` | Signup screen — takes an invite code. Shareable; send it with the code |
 | `/auth/callback` | Landing page for every emailed auth link |
 
 `src/routes.ts` is the single definition driving both the router and the
@@ -173,22 +174,119 @@ deadline.** That is the one window where a mistake stops people using the pool.
 | 2026-08-22 | `0003_pick_visibility.sql` | pool admin |
 | 2026-08-22 | `0004_enforce_deadline.sql` | pool admin |
 
-## Adding a member
+## Membership and invites
 
-There is no signup UI — `useAuth` has a `signUp` function wired to nothing.
-Accounts are created by hand:
+Since `0009_invites_and_membership.sql`, members sign themselves up with an
+invite code. There is no hand-creating accounts any more, and — importantly —
+**"Enable email signups" is now ON**. That switch used to be the only thing
+keeping strangers out; the database is what keeps them out now.
+
+### How it holds
+
+Creating an auth account is open, and cannot be closed: `VITE_SUPABASE_ANON_KEY`
+ships in the browser bundle, so anyone can call `auth.signUp`. What that gets
+them is nothing. **Membership is a `profiles` row**, and the only thing that
+creates one is `redeem_invite(code, name)`. There is no INSERT policy and no
+INSERT grant on `profiles` for any client role.
+
+So "signed in" and "member" are different states, and the app has three:
+
+| Signed in | Profile | What they see |
+|---|---|---|
+| no | — | Login / signup |
+| yes | no | "One more step" — enter an invite code |
+| yes | yes | The pool |
+
+Someone who signs up without a code sees that middle screen forever. They cannot
+read the roster, cannot see a week or a game, and cannot pick.
+
+### Opening the pool
+
+One reusable code for everybody is the normal shape — a code is uncapped, so the
+same one works for the whole pool. Mint it in **Admin Panel → Invites**, and
+**set an explicit expiry**: the default is 14 days, which for a code minted at
+the season opener dies in the middle of October.
+
+Bind an email address instead to make a code personal — useful for a single late
+joiner. A bound code is checked against the address on the account, read from
+`auth.users` inside the function, so it cannot be spoofed by the client.
+
+Revoke a code from the same panel once everyone is in. Claims already made are
+unaffected — revoking is not un-inviting.
+
+### The first admin — bootstrap
+
+Chicken-and-egg, and the one profile created outside `redeem_invite`.
+`admin_create_invite` gates on `is_admin()`, which reads `auth.uid()` — null in
+a dashboard session — so the SQL editor cannot mint a code either.
 
 1. Supabase → Authentication → Users → Add user (set a password).
-2. Copy the new user's UUID.
-3. In the SQL editor:
+2. In the SQL editor:
    ```sql
-   insert into profiles (id, email, name, role)
-   values ('<uuid>', '<email>', '<display name>', 'member');
+   insert into public.profiles (id, email, name, role)
+   select id, email, 'Your Name', 'admin'
+     from auth.users
+    where email = 'you@example.com';
    ```
+3. Sign in as that user. Admin Panel → Invites now works for everything else.
 
-A member without a `profiles` row can log in but the app shows no profile. Keep
-"Enable email signups" **disabled** in Supabase — it is currently the only thing
-stopping strangers creating accounts.
+If you ever need a code before an admin exists, insert one directly rather than
+calling the function:
+
+```sql
+insert into public.invites (code, expires_at)
+values (public.generate_invite_code(), now() + interval '90 days')
+returning code, expires_at;
+```
+
+### Supabase settings this depends on
+
+Authentication → Providers → Email:
+
+- **Enable signup must be ON.** With it off, self-serve signup cannot work at
+  all and you are back to creating users by hand.
+- **Confirm email is OFF.** `auth.signUp` returns a session, so the code is
+  redeemed in the same action and the user lands straight in the pool.
+  Switching it on is supported and safe — `signUp` then returns no session, the
+  app says so, and the code is asked for again after the user confirms and signs
+  in. That path is deliberate, not a workaround.
+
+### Auditing
+
+```sql
+-- Every code and its state.
+select code, email, created_at, expires_at, revoked_at
+  from public.invites
+ order by created_at desc;
+
+-- Who joined on which code.
+select c.code, p.name, p.email, c.claimed_at
+  from public.invite_claims c
+  join public.profiles p on p.id = c.user_id
+ order by c.claimed_at desc;
+
+-- Anyone in the pool who did NOT arrive through a code. Should be exactly the
+-- founding admin, and nobody else.
+select p.id, p.email, p.name, p.role
+  from public.profiles p
+  left join public.invite_claims c on c.user_id = p.id
+ where c.user_id is null;
+```
+
+### Removing a member
+
+Delete the auth user (Authentication → Users). `profiles.id` cascades from
+`auth.users`, `picks.user_id` cascades from `profiles`, and the invite claim
+cascades too — leaving the code itself open for everyone else.
+
+### Promoting an admin
+
+Not something the app can do: `profiles.role` is not client-writable (0001
+revoked the column grant and added a trigger). From the SQL editor:
+
+```sql
+update public.profiles set role = 'admin' where email = 'them@example.com';
+```
 
 ## Local development
 
