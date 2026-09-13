@@ -44,7 +44,6 @@ either name.
 | Function | Trigger | What it does |
 |---|---|---|
 | `nhl-schedule` | App, when a week has no games yet | Proxies `api-web.nhle.com/v1/schedule/{date}` and returns rows shaped for insert. No auth. |
-| `gemini-schedule` | Legacy path | Re-export of `nhl-schedule`, kept so cached browser bundles don't 404. Safe to delete after a release. |
 | `sync-week` | App on login and on the results view; admin panel | The workhorse. Service-role client: marks games FINAL with scores, resolves PENDING picks (win → points = confidence), and marks the week COMPLETED once all games are final or it is past 4:00 AM ET Sunday. Idempotent. **Requires a `Bearer` Supabase access token** from any signed-in member — not admin-only, since scoring has to happen whoever opens the app. |
 | `team-records` | Picks view | `standings/now` → `{ABBR: "W-L-OTL"}`, cached an hour. No auth. |
 

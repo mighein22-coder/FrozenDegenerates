@@ -256,13 +256,18 @@ Treat the pool's standings as tamperable until 15–18 are closed.
 
 ## Immediate Security Checks (Do Manually)
 
-1. [ ] **Check git history for committed secrets:**
+1. [x] **Check git history for committed secrets** ✅
    ```bash
    git log --all --full-history -- .env src/.env.local
    ```
-   If they appear, rotate the Gemini API key immediately. `src/.env` holds a real
-   `GEMINI_API_KEY`, so this is worth doing even though `.gitignore` covers it now.
-   **Still outstanding.**
+   Run 2026-09-13, widened to `*.env*` across every ref and to a pattern scan of
+   all history blobs for `AIza…` / `eyJhbGciOi…` / `sk-…` strings. The only env
+   file ever committed is `src/.env.example`, which has carried placeholders from
+   its first commit. The pattern scan's one hit is a truncated JWT header in an
+   old `NEXT_STEPS.md` — documentation filler, not a key. **No Gemini key was
+   ever committed, so there is nothing to rotate.** Gemini is gone from the app
+   besides: the dependency, the service and the function alias have all been
+   removed, and the key now appears only in the untracked local `src/.env`.
 
 2. [x] **Verify Supabase RLS** — confirm UPDATE on `games` and `picks` is restricted to service role only. ✅
    Done by migration rather than by inspection: `0006` revoked client UPDATE on
