@@ -34,7 +34,8 @@ Nothing currently in flight.
       PicksView's unused `weeks` prop, and the `recharts` / `react-hot-toast` /
       `@google/genai` dependencies.
 - [x] Rename `gemini-schedule` → `nhl-schedule` (it never used Gemini), keeping a
-      re-export alias for one release.
+      re-export alias for one release. The alias was deleted 2026-09-13, once
+      seven releases had shipped behind it and nothing in the app referenced it.
 - [x] #20 Share the ET helpers with the Netlify functions instead of hand-rolling
       DST in `sync-week`. **This fixed a real bug**: the duplicate built the
       Sunday date by string concatenation, so a month-end Saturday produced an
