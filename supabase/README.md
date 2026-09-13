@@ -376,5 +376,10 @@ the live shape, already known to be missing columns the app uses
 guessed schema would be worse than no assertions: they would look like proof.
 
 Closing this properly means capturing production's real DDL into an `0000`
-baseline migration first. Until then, the two queries above run in the dashboard
-against the actual database, which is the thing that matters.
+baseline migration first. **That work has started — see
+[`supabase/baseline/`](baseline/).** It needs one thing from the pool admin:
+running [`baseline/capture.sql`](baseline/capture.sql) in the SQL editor and
+keeping the output. The script is read-only and safe during an open week.
+
+Until the baseline exists, the two queries above run in the dashboard against
+the actual database, which is the thing that matters.
