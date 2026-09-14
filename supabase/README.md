@@ -26,7 +26,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0006_lock_pick_score_columns.sql` | ☑ applied 2026-08-23 | Stops a member writing their own `points_earned`/`result` — the columns the standings are summed from |
 | `0007_lock_game_score_writes.sql` | ☑ applied 2026-08-23 | Stops anyone — including logged-out visitors — rewriting game scores, which decide every pick |
 | `0008_lock_week_deadline_writes.sql` | ☑ applied 2026-08-23 | Stops a member moving `weeks.saturday_date` — the column every deadline rule reads |
-| `0009_invites_and_membership.sql` | ☐ not yet applied | Self-serve signup gated by invite codes. Supersedes 0002: a `profiles` row can no longer be self-inserted, only created by `redeem_invite()` |
+| `0009_invites_and_membership.sql` | ☑ applied (date not recorded) | Self-serve signup gated by invite codes. Supersedes 0002: a `profiles` row can no longer be self-inserted, only created by `redeem_invite()` |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -295,30 +295,54 @@ The queries stay useful — a week whose date disagrees with its id would also
 point at a bug in week creation. Worth re-running if a week ever locks at the
 wrong time.
 
-## Signup and email confirmation
+## 0009 — signup was open, and membership was self-serve
 
-`0002` covers the signup flow the app actually implements today: the client
-inserts its own `profiles` row right after `supabase.auth.signUp()`.
+Until `0009`, the pool was safe only because email signups were switched off in
+the Supabase project. That is a dashboard toggle, not a policy — and `0002`'s
+`profiles` INSERT policy meant anyone who did get an account could make
+themselves a member with one statement. The anon key is in the public bundle, so
+`auth.signUp` is reachable by anybody the moment that toggle moves.
 
-**That only works with email confirmation turned off** (Authentication →
-Providers → Email → "Confirm email"). With confirmation on, `signUp()` returns
-no session, so the insert arrives unauthenticated, `auth.uid()` is NULL, and
-RLS refuses it — no INSERT policy can rescue a request that carries no
-identity.
+`0009` makes membership something the database grants rather than something a
+client asserts. A `profiles` row is now created by `redeem_invite()` and nothing
+else; the self-insert policy and its grant are gone. It also closed `profiles`
+SELECT, which was `using (true)` with no `to` clause — so the anon key could
+read every member's email and role.
 
-If the pool wants confirm-on-signup, the profile row has to be created
-server-side instead, by a `SECURITY DEFINER` trigger on `auth.users` that
-reads the display name out of `raw_user_meta_data`. That replaces the client
-insert in `useAuth.signUp` rather than sitting alongside it, so it is a
-different change, not an addition to `0002`.
+### Signup and email confirmation
+
+The old client-inserts-its-own-profile flow is gone, and so is the constraint it
+carried. Signup is now two separable operations: `auth.signUp()`, then
+`redeem_invite()`.
+
+`redeem_invite()` still needs a session — it reads `auth.uid()` and refuses
+without one — so with confirmation on, redemption cannot happen during signup.
+But it no longer has to. `RedeemInviteView` is reachable by anyone holding a
+session with no profile row, so the member confirms their address, signs in, and
+finishes joining there. `useAuth.signUp` returns `needsConfirmation` for exactly
+this path.
+
+**So confirm-on-signup now works without a schema change.** The `SECURITY
+DEFINER` trigger on `auth.users` that this section used to call for is no longer
+needed; the resumable redemption screen does the same job in the open. The same
+screen is what catches a mistyped invite code, which would otherwise strand an
+account: auth user created, no profile, and since `0009` no way to make one.
+
+One consequence worth knowing: an uninvited stranger who signs up sees that
+screen and nothing else, forever. That is the whole app to them. It is only safe
+because `0009` also tightened what a session without a profile can do — the
+foreign key on `picks.user_id` stopped them picking, but on its own left them
+able to read the roster and to insert `weeks` and `games` rows, including
+squatting a real NHL game id so a fixture was graded against an inverted result.
 
 ## Known gaps not covered here
 
 - Changing a member's email still has to be done by an admin. Doing it in-app
   needs Supabase's confirm-change flow plus a trigger keeping
   `profiles.email` in sync with `auth.users.email`.
-- `games` and `picks` still need the RLS review described in ASSESSMENT.md
-  item #10.
+- No `0000` baseline, so the migrations cannot be replayed onto an empty
+  database and the policy-test harness cannot be ported. In progress — see
+  [`baseline/`](baseline/).
 
 ## The regression check
 
@@ -376,5 +400,10 @@ the live shape, already known to be missing columns the app uses
 guessed schema would be worse than no assertions: they would look like proof.
 
 Closing this properly means capturing production's real DDL into an `0000`
-baseline migration first. Until then, the two queries above run in the dashboard
-against the actual database, which is the thing that matters.
+baseline migration first. **That work has started — see
+[`supabase/baseline/`](baseline/).** It needs one thing from the pool admin:
+running [`baseline/capture.sql`](baseline/capture.sql) in the SQL editor and
+keeping the output. The script is read-only and safe during an open week.
+
+Until the baseline exists, the two queries above run in the dashboard against
+the actual database, which is the thing that matters.

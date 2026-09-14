@@ -10,7 +10,14 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## In progress
 
-Nothing currently in flight.
+- [ ] **`0000` baseline migration.** Started 2026-09-13. `supabase/baseline/`
+      now holds `capture.sql` — a read-only introspection script that prints the
+      live DDL for the four hand-made tables — plus the assembly rules and a
+      cross-check of what the app's code requires. **Blocked on the pool admin
+      running the capture**, which cannot be done from the repo: it needs
+      dashboard or service-role access, and the local `.env.local` carries only
+      the anon key. Porting `supabase/test/run.sh` afterwards will also need
+      Docker, which is not installed on the dev machine.
 
 ## Done
 
@@ -123,7 +130,7 @@ Nothing currently in flight.
 
 ### Known issues not yet scheduled (continued)
 
-- [ ] **No `0000` baseline migration.** `profiles`, `weeks`, `games` and `picks`
+- [~] **No `0000` baseline migration.** `profiles`, `weeks`, `games` and `picks`
       were created by hand in the dashboard and no migration creates them, so
       the migrations cannot be replayed onto an empty database. That is what
       blocks porting the NFL app's `supabase/test/run.sh`, which applies every
@@ -132,6 +139,7 @@ Nothing currently in flight.
       Capturing production's real DDL into an `0000` baseline is the prerequisite.
       Until then `supabase/README.md` carries the same regression check as two
       queries to run in the dashboard.
+      **In progress — see the top of this file and `supabase/baseline/`.**
 
 ### Planned features
 

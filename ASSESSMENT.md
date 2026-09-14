@@ -276,6 +276,17 @@ Treat the pool's standings as tamperable until 15–18 are closed.
    applied and verified 2026-08-23.
 
 3. [x] **Confirm Supabase public signups are disabled** — Authentication → Settings → disable "Enable email signups". ✅
-   Confirmed disabled 2026-08-23. This one underpins the rest: every policy from
-   `0003` onward gates on "any authenticated member", which is only a meaningful
-   boundary while accounts cannot be self-created.
+   Confirmed disabled 2026-08-23. This one underpinned the rest: every policy
+   from `0003` onward gates on "any authenticated member", which is only a
+   meaningful boundary while accounts cannot be self-created.
+
+   **Superseded by `0009`, and deliberately reversed.** Email signups are now
+   **ON** — that is what self-serve signup means. The check no longer applies,
+   because the boundary it was protecting moved: "signed in" and "member" are
+   now different states, membership is a `profiles` row, and `redeem_invite()`
+   is the only thing that creates one. No client role holds an INSERT policy or
+   grant on `profiles`.
+
+   Do not re-apply this check by switching signups back off — it would break
+   the invite flow while protecting nothing that `0009` does not already
+   protect. See `docs/OPERATIONS.md` → "Membership and invites".
