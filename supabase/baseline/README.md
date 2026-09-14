@@ -116,10 +116,71 @@ Open questions the capture answers, none of which can be settled from the repo:
   discusses one as a hypothetical for confirm-on-signup; whether one exists is
   a different question.
 
+## What the capture answered
+
+Run 2026-09-14 against project `okyncddbbzrkerjtasvx`; 392 rows, numbering
+contiguous, no truncation. Raw output committed as `capture-2026-09-14.csv`.
+
+Every open question from the section above, settled:
+
+* **No enums.** `status`, `role` and `result` are plain `text` with check
+  constraints. The capture found no enum type in `public` at all.
+* **The five-picks rule *is* backed by the database** — better than expected.
+  `picks` carries `unique (user_id, week_id, game_id)` *and*
+  `unique (user_id, week_id, confidence)`, plus `check (confidence between 1
+  and 5)`. A REST call that skips both the TypeScript checks and `save_picks`
+  still cannot submit two picks at the same confidence.
+* **Nothing maintains `updated_at`, because on three tables it does not exist.**
+  Only `profiles` has one. See the drift note below.
+* **No trigger on `auth.users`.** The hypothetical signup trigger discussed in
+  `supabase/README.md` was only ever hypothetical.
+
+Both inferences held: `games.id` and `picks.id` default to `gen_random_uuid()`,
+and `weeks.id` is the primary key.
+
+### Drift the capture found
+
+* **`GameRow` and `PickRow` declare an `updated_at` that does not exist.**
+  `src/lib/supabase.ts` types both with `updated_at: string`; the live tables
+  have no such column. Nothing reads it — `mapGame` and `mapPick` ignore it — so
+  this is a lying type rather than a live bug, but any code trusting it would
+  get `undefined` at runtime with the compiler's blessing.
+* **Four nullable foreign keys.** `games.week_id`, `picks.user_id`,
+  `picks.week_id` and `picks.game_id` all permit NULL. A NULL `user_id` makes
+  `auth.uid() = user_id` evaluate to NULL rather than false, which is not the
+  same thing as a match but is also not a refusal by ownership.
+* **A policy 0007 does not drop.** `"Allow authenticated users to update games"`
+  — `using (true) with check (true)` — is still live. It is inert only because
+  0007 revoked the UPDATE grant; re-grant UPDATE on `games` for any reason and
+  every member can rewrite scores again, with no policy change to notice.
+* **0004 is not in effect.** Serious enough that it is written up on its own in
+  `ASSESSMENT.md` #27 and `supabase/README.md`.
+
+## Still missing from the capture
+
+`capture.sql` reads `pg_trigger`, which does not hold event triggers. The
+capture turned up `rls_auto_enable()`, an event-trigger function belonging to no
+migration, but not the event trigger that fires it. Nothing in the series
+depends on it — 0009 enables RLS on its own tables explicitly — so `0000` leaves
+it out rather than reproducing half an object. To capture it:
+
+```sql
+select evtname, evtevent, evtenabled, evttags,
+       pg_get_userbyid(evtowner) as owner,
+       p.proname
+  from pg_event_trigger et
+  join pg_proc p on p.oid = et.evtfoid
+ order by evtname;
+```
+
 ## Status
 
 - [x] Capture script written
-- [ ] Capture run against production — **needs the pool admin**
-- [ ] `0000_baseline.sql` assembled from the output
-- [ ] Baseline verified by replay (apply `0000`–`0009` to an empty database)
-- [ ] `supabase/test/run.sh` ported — also needs Docker installed
+- [x] Capture run against production (2026-09-14)
+- [x] `0000_baseline.sql` assembled from the output
+- [ ] Baseline verified by replay (apply `0000`–`0009` to an empty database) —
+      **needs Docker, not installed on the dev machine.** Until then `0000` is
+      transcribed-and-reviewed, not executed.
+- [ ] `supabase/test/run.sh` ported — same dependency
+- [ ] Event trigger behind `rls_auto_enable()` captured, if it should be in the
+      baseline at all
