@@ -18,10 +18,11 @@ Migrations are written to be idempotent, so re-running one is safe.
 
 | Migration | Applied? | What it does |
 | --- | --- | --- |
+| `0000_baseline.sql` | — n/a | The pre-`0001` schema, captured from production 2026-09-14. **Never applied to production** — production already has this history. It exists so a throwaway database can be given the same starting point |
 | `0001_lock_profile_privileged_columns.sql` | ☑ applied 2026-08-21 | Stops a member from promoting themselves to `admin` by editing their own `profiles` row |
 | `0002_allow_signup_profile_insert.sql` | ☑ applied 2026-08-21 | Lets a new user create their own `profiles` row at signup, without being able to set `role` |
 | `0003_pick_visibility.sql` | ☑ applied 2026-08-22 | Hides other players' picks until the week's Saturday 10:00 ET deadline passes |
-| `0004_enforce_deadline.sql` | ☑ applied 2026-08-22 | Enforces that deadline for writes too, so picks cannot be changed after games start |
+| `0004_enforce_deadline.sql` | ⚠️ **recorded applied 2026-08-22, but NOT in effect** | Enforces that deadline for writes too, so picks cannot be changed after games start. The 2026-09-14 capture found none of its three policies in the database — see below and ASSESSMENT.md #27. **Re-run it.** |
 | `0005_save_picks_rpc.sql` | ☑ applied 2026-08-23 | Replaces a pick sheet in one transaction, so a failed save can no longer lose the old picks |
 | `0006_lock_pick_score_columns.sql` | ☑ applied 2026-08-23 | Stops a member writing their own `points_earned`/`result` — the columns the standings are summed from |
 | `0007_lock_game_score_writes.sql` | ☑ applied 2026-08-23 | Stops anyone — including logged-out visitors — rewriting game scores, which decide every pick |
@@ -36,6 +37,14 @@ on the `picks_revealed()` function created by 0003.
 `picks` carries exactly four policies (one per command), and exactly one of them
 is a SELECT policy — confirming no permissive policy survived the swap, which is
 the failure mode that would have left picks readable while appearing protected.
+
+⚠️ **That verification was not sufficient, and 0004 is not in effect.** The
+2026-09-14 schema capture found `picks` carrying the three *original* write
+policies — the ones 0004 drops by name — and none of the three 0004 creates. Note
+that the check above passes in both states: there are four policies either way,
+one of them SELECT. It counted policies without reading them. The full write-up,
+with the exploit window and the damage-check query, is ASSESSMENT.md #27; the
+fix is to re-run `0004`, which is idempotent and grants nothing.
 
 Both were verified after applying: `authenticated` now holds UPDATE only on
 `name`/`avatar` and INSERT only on `id`/`email`/`name`/`avatar` — `role` appears
@@ -150,6 +159,15 @@ knowing:
   `picks_revealed()` gives the delete and the insert the same answer. A
   submission that lands on the wrong side of 10:00 is refused whole, with the
   member's previous sheet still in place.
+
+Correction, 2026-09-14: the first bullet used to claim there is "no second copy
+of the deadline rule inside it to drift away from the policy". The live function
+body disproves that — `save_picks` opens with
+`if picks_revealed(p_week_id) then raise exception 'Picks are locked...'`, a
+deliberate second copy that exists to turn an opaque RLS refusal into a readable
+error. That copy is currently the *only* deadline enforcement on writes, since
+the 0004 policies are missing, and it is why the hole in ASSESSMENT.md #27 is
+not reachable through the app's own UI.
 
 Applied and verified 2026-08-23: `prosecdef` is false, confirming the function
 runs as the caller and the `0004` policies still govern it.
