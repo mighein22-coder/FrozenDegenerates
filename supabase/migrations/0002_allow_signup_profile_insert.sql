@@ -52,16 +52,45 @@ begin;
 --    somebody else's address in the league directory.
 -- ---------------------------------------------------------------------------
 
-drop policy if exists "Users can insert own profile" on public.profiles;
+-- SUPERSEDED BY 0009, AND GUARDED AGAINST BEING PUT BACK.
+--
+-- 0009 removed this policy and its grant: a `profiles` row is created by
+-- `redeem_invite()` and by nothing else. But this file still creates them, and
+-- re-applying one migration on its own -- to edit a comment, to re-check a
+-- function -- is an ordinary thing to do. Doing it here would reopen
+-- self-serve membership to anyone holding the public anon key, with nothing
+-- looking obviously wrong afterwards.
+--
+-- The guard keys off `public.invites`, which only 0009 creates. During a clean
+-- replay of 0000..0010 that table does not exist yet when this file runs, so
+-- the section below applies in full and opens the hole exactly as history did
+-- -- which is what makes the 0009 assertions meaningful. Afterwards it is a
+-- no-op.
+--
+-- Caught by `supabase/test/run.sh`, which re-applies 0001 and 0002 after the
+-- series and fails if anything reopened.
+do $guard$
+begin
+  if to_regclass('public.invites') is not null then
+    raise notice '0002: superseded by 0009 (public.invites exists) -- skipping';
+    return;
+  end if;
 
-create policy "Users can insert own profile"
-  on public.profiles
-  for insert
-  to authenticated
-  with check (
-    auth.uid() = id
-    and lower(email) = lower(auth.jwt() ->> 'email')
-  );
+  drop policy if exists "Users can insert own profile" on public.profiles;
+
+  create policy "Users can insert own profile"
+    on public.profiles
+    for insert
+    to authenticated
+    with check (
+      auth.uid() = id
+      and lower(email) = lower(auth.jwt() ->> 'email')
+    );
+
+  revoke insert on public.profiles from anon, authenticated;
+  grant insert (id, email, name, avatar) on public.profiles to authenticated;
+end
+$guard$;
 
 -- ---------------------------------------------------------------------------
 -- 2. Column-level INSERT privileges.
@@ -70,11 +99,15 @@ create policy "Users can insert own profile"
 --    fall through to their defaults.
 -- ---------------------------------------------------------------------------
 
-revoke insert on public.profiles from anon, authenticated;
+-- (The member-facing revoke and column grant moved inside the guard above, so
+-- that re-applying this file after 0009 cannot restore them either. The policy
+-- alone would be harmless without the grant, and the grant alone harmless
+-- without the policy -- putting back both is what reopens membership, so both
+-- sit behind the same condition.)
 
-grant insert (id, email, name, avatar) on public.profiles to authenticated;
-
--- service_role must keep full write access for server-side functions.
+-- service_role must keep full write access for server-side functions. Outside
+-- the guard on purpose: it is not a client role, 0009 does not revoke it, and
+-- `redeem_invite()` is SECURITY DEFINER and needs it.
 grant insert on public.profiles to service_role;
 
 commit;

@@ -17,11 +17,16 @@
 #
 #   ./supabase/test/run.sh
 #
-# Requires a Postgres 16 server and `psql`. NOT Docker — any reachable server
+# Requires a Postgres server and `psql`. NOT Docker — any reachable server
 # will do, including one you already run locally. Override any of these from
 # the environment:
 #
 #   PGHOST=/tmp PGPORT=5432 PGUSER=postgres ./supabase/test/run.sh
+#
+# Known good on PostgreSQL 17.4 (Windows, Git Bash), against a server with
+# local `trust` auth:
+#
+#   PATH="/c/Program Files/PostgreSQL/17/bin:$PATH" \n#   PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres ./supabase/test/run.sh
 #
 # The server must allow creating databases, because each run drops and
 # recreates one. Against a hosted Supabase project, which does not allow that,
@@ -34,6 +39,11 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export PGHOST="${PGHOST:-/tmp}"
 export PGPORT="${PGPORT:-55432}"
 export PGUSER="${PGUSER:-postgres}"
+# Windows shells hand arguments to psql in the console codepage, which turns a
+# stray em dash in an inline -c query into an invalid UTF-8 byte. Pinning the
+# client encoding plus keeping the inline SQL below ASCII-only is what keeps
+# this runnable from Git Bash as well as from a Unix shell.
+export PGCLIENTENCODING="${PGCLIENTENCODING:-UTF8}"
 DB="${PGDATABASE_TEST:-icepick_test}"
 
 echo "==> Recreating $DB"
@@ -81,8 +91,8 @@ reopened=$(psql -t -A -d "$DB" -c "
    where schemaname = 'public'
      and (
        -- ANY insert policy on profiles. Not just a permissive one: the policy
-       -- this exists to catch is \`with check (auth.uid() = id)\`, which looks
-       -- restrictive and is exactly the hole — it lets every signed-in user
+       -- this exists to catch is with check (auth.uid() = id), which looks
+       -- restrictive and is exactly the hole: it lets every signed-in user
        -- make themselves a member. After 0009 there should be none at all.
        (cmd = 'INSERT' and tablename = 'profiles')
        -- Anyone-can-write on the schedule.

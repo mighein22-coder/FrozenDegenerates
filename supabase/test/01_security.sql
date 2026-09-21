@@ -260,10 +260,20 @@ select pg_temp.must_fail(
   'cannot delete a game out from under a pick',
   $$delete from public.games where id = 'aaaaaaaa-0000-0000-0000-000000000001'$$);
 
+-- Two different defences, and worth testing separately. The score columns are
+-- not in the INSERT grant at all, so naming one is refused outright by column
+-- privileges before any policy or trigger runs.
+select pg_temp.must_fail(
+  'a member cannot even name a score column on insert',
+  $$insert into public.games (week_id, home_team_id, away_team_id, start_time, home_score)
+    values ('week-2030-01-05', 'NSH', 'STL', '2030-01-05 19:00-05', 7)$$);
+
+-- `status` IS grantable, because the app sends it. So this insert is allowed
+-- and the trigger is what neutralises it.
 select pg_temp.must_pass(
   'a member may still seed a game, because that is how a week fills',
-  $$insert into public.games (week_id, home_team_id, away_team_id, start_time, status, home_score, away_score)
-    values ('week-2030-01-05', 'NSH', 'STL', '2030-01-05 19:00-05', 'FINAL', 7, 0)$$);
+  $$insert into public.games (week_id, home_team_id, away_team_id, start_time, status)
+    values ('week-2030-01-05', 'NSH', 'STL', '2030-01-05 19:00-05', 'FINAL')$$);
 
 select pg_temp.assert(
   'but the seeded game was forced to SCHEDULED with no score',

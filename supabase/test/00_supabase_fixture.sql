@@ -56,3 +56,23 @@ as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $$;
 grant execute on function auth.uid() to anon, authenticated, service_role;
+
+-- auth.jwt() returns the whole claims object. 0002's `profiles` INSERT policy
+-- reads the email out of it to insist a new profile matches the signed-in
+-- address. That policy is gone by 0009 -- redeem_invite() reads auth.users
+-- directly instead -- so no assertion needs this, but 0002 will not APPLY
+-- without it, and the harness applies every migration in order on purpose.
+--
+-- Set it with `set local request.jwt.claims = '{"email":"..."}'` if a future
+-- test needs one.
+create or replace function auth.jwt()
+returns jsonb
+language sql
+stable
+as $$
+  select coalesce(
+    nullif(current_setting('request.jwt.claims', true), '')::jsonb,
+    '{}'::jsonb
+  );
+$$;
+grant execute on function auth.jwt() to anon, authenticated, service_role;

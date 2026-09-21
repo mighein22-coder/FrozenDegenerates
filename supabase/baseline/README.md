@@ -183,10 +183,12 @@ select evtname, evtevent, evtenabled, evttags,
 - [x] Capture run against production (2026-09-14)
 - [x] `0000_baseline.sql` assembled from the output
 - [x] `supabase/test/run.sh` ported, with the fixture and the assertions
-- [ ] Baseline verified by replay (apply `0000`–`0009` to an empty database) —
-      **needs a Postgres 16 server and `psql`**, neither installed on the dev
-      machine. Not Docker: `run.sh` is plain `psql` against whatever server
-      `PGHOST`/`PGPORT`/`PGUSER` point at. Until it runs, `0000` and the tests
-      are both transcribed-and-reviewed, not executed.
+- [x] **Baseline verified by replay.** `0000`–`0010` apply in order to an empty
+      database and 60 assertions pass, on PostgreSQL 17.4. `0000` is proven,
+      not just reviewed. Not Docker: `run.sh` is plain `psql` against whatever
+      `PGHOST`/`PGPORT`/`PGUSER` point at.
+- [x] The replay immediately earned its keep: it found that `save_picks` could
+      not insert at all (ASSESSMENT.md #28) and that re-applying `0002` alone
+      reopened self-serve membership.
 - [ ] Event trigger behind `rls_auto_enable()` captured, if it should be in the
       baseline at all

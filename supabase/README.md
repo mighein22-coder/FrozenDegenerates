@@ -28,6 +28,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0007_lock_game_score_writes.sql` | ☑ applied 2026-08-23 | Stops anyone — including logged-out visitors — rewriting game scores, which decide every pick |
 | `0008_lock_week_deadline_writes.sql` | ☑ applied 2026-08-23 | Stops a member moving `weeks.saturday_date` — the column every deadline rule reads |
 | `0009_invites_and_membership.sql` | ☑ applied (date not recorded) | Self-serve signup gated by invite codes. Supersedes 0002: a `profiles` row can no longer be self-inserted, only created by `redeem_invite()` |
+| `0010_fix_save_picks_game_id_cast.sql` | ⚠️ **not yet applied — pick submission is broken until it is** | Adds the `::uuid` cast `0005` omitted. Without it `save_picks` raises on every call, so no member can submit a sheet. See ASSESSMENT.md #28 |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -449,10 +450,19 @@ to start from a *guessed* schema, and assertions passing against a guess are
 worse than no assertions — they look like proof. `0000_baseline.sql` closed
 that by capturing production's real DDL; see [`supabase/baseline/`](baseline/).
 
-⚠️ **The harness has not been run yet.** There is no Postgres on the dev
-machine, so both `0000` and the assertions are transcribed-and-reviewed rather
-than executed. Expect to fix a syntax error or two on the first run — and treat
-a green run as the point at which any of this is actually proven.
+**It runs green: 60 assertions, on PostgreSQL 17.4.** Which means `0000`
+replays — every migration applies in order to an empty database, so the
+baseline is now proven rather than merely reviewed.
 
-Until then, the two queries above run in the dashboard against the actual
-database, which is the thing that matters.
+The first run found two real defects that three careful readings had not:
+
+1. **`save_picks` could not insert** — ASSESSMENT.md #28, fixed by `0010`.
+2. **Re-applying `0002` alone reopened self-serve membership**, putting back
+   the `profiles` INSERT policy and grant that `0009` removed. The operative
+   half of `0002` now sits behind a guard keyed on `public.invites` existing,
+   so a clean replay still opens the hole exactly as history did — which is
+   what makes the `0009` assertions mean anything — while re-applying the file
+   afterwards is a no-op.
+
+The two dashboard queries above remain the check against *production*, which a
+local replay can never stand in for. Run them after any migration work.
