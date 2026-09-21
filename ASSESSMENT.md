@@ -119,8 +119,9 @@ Treat the pool's standings as tamperable until 15–18 are closed.
   - Applied 2026-08-23. The damage-check queries were run first and came back
     clean — no deadline had been moved.
 
-- [ ] **27. The pick deadline is not enforced in the database — 0004 is not in
-  effect.** ⚠️ **Live. Found 2026-09-14 by the `0000` baseline capture.**
+- [x] **27. The pick deadline was not enforced in the database — 0004 was not in
+  effect.** ✅ **Found 2026-09-14 by the `0000` baseline capture; closed
+  2026-09-21 by re-applying `0004`.**
   - `0004_enforce_deadline.sql` replaces three `picks` policies with versions
     carrying `and not picks_revealed(week_id)`, named `picks_insert_own`,
     `picks_update_own` and `picks_delete_own`. **None of the three exists in
@@ -150,10 +151,13 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     which the policies alone guard. (Worth noting `supabase/README.md` states
     the opposite — "there is no second copy of the deadline rule inside it" —
     and the live function body disproves that too.)
-  - **Fix: re-run `0004` as it stands.** It is idempotent, it grants nothing,
-    and it touches only these three policies, so it cannot disturb `0006`'s
-    revoked UPDATE or anything else later in the series. Then re-verify by
-    reading the policies rather than counting them:
+  - **Fixed 2026-09-21 by re-running `0004` as it stands.** It is idempotent, it
+    grants nothing, and it touches only these three policies, so it could not
+    disturb `0006`'s revoked UPDATE or anything else later in the series. The
+    pre-flight confirmed the open week reported unlocked beforehand — skipping
+    that is how you lock the pool out of submitting — and a member submitted a
+    sheet successfully afterwards. Re-verified by reading the policies rather
+    than counting them:
 
     ```sql
     select policyname, cmd, roles, qual, with_check
@@ -162,8 +166,11 @@ Treat the pool's standings as tamperable until 15–18 are closed.
      order by cmd;
     ```
 
-    Every one of INSERT, UPDATE and DELETE must mention `picks_revealed`.
-  - **Damage check — run before fixing.** A sheet rewritten after its deadline
+    Every one of INSERT, UPDATE and DELETE must mention `picks_revealed`. All
+    three did.
+  - **Damage check — run 2026-09-21, before fixing: zero rows.** Nothing was
+    ever created after its own week's deadline, so the gap was never exploited
+    and no sheet needed repairing. A sheet rewritten after its deadline
     keeps its original `created_at` only if the attacker preserved it, and they
     cannot: `created_at` defaults to `now()` on insert and the column is not in
     their INSERT grant. So a pick created after its own week's deadline is the
@@ -180,7 +187,12 @@ Treat the pool's standings as tamperable until 15–18 are closed.
 
     Expect zero rows. Any row is a sheet submitted or rewritten after its
     deadline — which is not proof of cheating, since a legitimate late insert by
-    an admin would look the same, but every one needs explaining.
+    an admin would look the same, but every one needs explaining. Worth
+    re-running after any future migration work on `picks`.
+  - **The lesson worth keeping.** This survived a review and a verification step
+    because the verification counted policies instead of reading them. The
+    policy-test harness that `0000` unblocks is the thing that would have caught
+    it in August rather than in September.
 
 ---
 
@@ -243,14 +255,14 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     camelCase, both typed as `Week`; `App.tsx` read both spellings
   - DB types renamed to `*Row`; cleared 12 typecheck errors `vite build` never showed
 
-- [ ] **24. Pick Deadline Enforced Only in Browser JavaScript** ⚠️ **Reopened —
-  see #27.** The fix below is in the repo but is not in the database.
+- [x] **24. Pick Deadline Enforced Only in Browser JavaScript** ✅ — reopened
+  2026-09-14, closed again 2026-09-21. See #27.
   - `savePicks` checked the deadline client-side; the RLS policies carried no
     time condition, so picks could be rewritten from the console after games started
   - Fixed by `supabase/migrations/0004_enforce_deadline.sql`, recorded as applied
     2026-08-22 — but the 2026-09-14 schema capture found none of the three
-    policies it creates. Whatever happened on 2026-08-22, the database does not
-    have them now.
+    policies it creates. Whatever happened on 2026-08-22, the database did not
+    have them a month later. Re-applied and properly verified 2026-09-21.
   - Verified not to affect scoring: `sync-week` uses the service-role key, which
     bypasses RLS, so picks still resolve and weeks still close after the deadline
 

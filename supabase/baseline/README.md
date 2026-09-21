@@ -153,8 +153,12 @@ and `weeks.id` is the primary key.
   — `using (true) with check (true)` — is still live. It is inert only because
   0007 revoked the UPDATE grant; re-grant UPDATE on `games` for any reason and
   every member can rewrite scores again, with no policy change to notice.
-* **0004 is not in effect.** Serious enough that it is written up on its own in
-  `ASSESSMENT.md` #27 and `supabase/README.md`.
+* **0004 was not in effect.** The biggest find, and written up on its own in
+  `ASSESSMENT.md` #27 and `supabase/README.md`: none of the three write policies
+  `0004` creates was in production, a month after it was recorded as applied and
+  verified. Re-applied 2026-09-21, damage check clean. This one find is the
+  clearest argument for finishing the harness — it is exactly what a replay test
+  catches and a careful read did not.
 
 ## Still missing from the capture
 

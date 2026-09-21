@@ -10,16 +10,6 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## In progress
 
-- [ ] **⚠️ Re-run `0004_enforce_deadline.sql` against production.** The
-      2026-09-14 schema capture found none of the three policies it creates;
-      `picks` still carries the originals it drops, so **the pick deadline is
-      not enforced on writes**. The app is unaffected — `save_picks` refuses a
-      late sheet on its own — but the REST endpoint is open from 10:00 ET
-      Saturday until the week closes. Run the damage-check query first, then
-      re-run `0004` (idempotent, grants nothing, touches only these three
-      policies), then verify by *reading* the policies, not counting them. Full
-      write-up: ASSESSMENT.md #27.
-
 - [~] **`0000` baseline migration.** Started 2026-09-13; `0000_baseline.sql`
       landed 2026-09-14, assembled from a 392-row capture of production and
       committed alongside it as `supabase/baseline/capture-2026-09-14.csv`.
@@ -27,6 +17,10 @@ Operational detail lives in `docs/OPERATIONS.md`.
       onto an empty database needs Docker, which is not installed on the dev
       machine, and so does porting `supabase/test/run.sh` afterwards. Until then
       it is transcribed-and-reviewed, not proven.
+
+      It has already paid for itself once: the capture is what found that `0004`
+      had gone missing from production (ASSESSMENT.md #27), a month after being
+      recorded as applied and verified.
 
 ## Done
 
@@ -125,6 +119,16 @@ Operational detail lives in `docs/OPERATIONS.md`.
       dropped, client UPDATE/DELETE revoked, INSERT narrowed to the six schedule
       columns, plus a trigger guard. `0007` applied 2026-08-23, with the two
       damage-check queries run beforehand.
+- [x] **The deadline stopped being enforced in the database** (ASSESSMENT #27).
+      ✅ The 2026-09-14 baseline capture found none of `0004`'s three write
+      policies in production — `picks` still carried the permissive originals
+      `0004` drops by name, so a member could rewrite a sheet over REST after
+      the games were final and let `sync-week` score it. The app was never the
+      exposure: `save_picks` refuses a late sheet on its own. The August
+      verification missed it by counting policies rather than reading them, and
+      the count is four in both states. Re-applied 2026-09-21; the damage check
+      returned zero rows, so it was never exploited.
+
 - [x] ✅ **`weeks` was writable by any member, which reopened the deadline**
       (ASSESSMENT #18, second half). `picks_revealed()` reads
       `weeks.saturday_date`, and `weeks` carried `UPDATE USING (true)` for
