@@ -10,14 +10,17 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## In progress
 
-- [ ] **`0000` baseline migration.** Started 2026-09-13. `supabase/baseline/`
-      now holds `capture.sql` — a read-only introspection script that prints the
-      live DDL for the four hand-made tables — plus the assembly rules and a
-      cross-check of what the app's code requires. **Blocked on the pool admin
-      running the capture**, which cannot be done from the repo: it needs
-      dashboard or service-role access, and the local `.env.local` carries only
-      the anon key. Porting `supabase/test/run.sh` afterwards will also need
-      Docker, which is not installed on the dev machine.
+- [~] **`0000` baseline migration.** Started 2026-09-13; `0000_baseline.sql`
+      landed 2026-09-14, assembled from a 392-row capture of production and
+      committed alongside it as `supabase/baseline/capture-2026-09-14.csv`.
+      **Not yet executed anywhere** — verifying it by replaying `0000`–`0009`
+      onto an empty database needs Docker, which is not installed on the dev
+      machine, and so does porting `supabase/test/run.sh` afterwards. Until then
+      it is transcribed-and-reviewed, not proven.
+
+      It has already paid for itself once: the capture is what found that `0004`
+      had gone missing from production (ASSESSMENT.md #27), a month after being
+      recorded as applied and verified.
 
 ## Done
 
@@ -116,6 +119,16 @@ Operational detail lives in `docs/OPERATIONS.md`.
       dropped, client UPDATE/DELETE revoked, INSERT narrowed to the six schedule
       columns, plus a trigger guard. `0007` applied 2026-08-23, with the two
       damage-check queries run beforehand.
+- [x] **The deadline stopped being enforced in the database** (ASSESSMENT #27).
+      ✅ The 2026-09-14 baseline capture found none of `0004`'s three write
+      policies in production — `picks` still carried the permissive originals
+      `0004` drops by name, so a member could rewrite a sheet over REST after
+      the games were final and let `sync-week` score it. The app was never the
+      exposure: `save_picks` refuses a late sheet on its own. The August
+      verification missed it by counting policies rather than reading them, and
+      the count is four in both states. Re-applied 2026-09-21; the damage check
+      returned zero rows, so it was never exploited.
+
 - [x] ✅ **`weeks` was writable by any member, which reopened the deadline**
       (ASSESSMENT #18, second half). `picks_revealed()` reads
       `weeks.saturday_date`, and `weeks` carried `UPDATE USING (true)` for
@@ -130,7 +143,26 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ### Known issues not yet scheduled (continued)
 
-- [~] **No `0000` baseline migration.** `profiles`, `weeks`, `games` and `picks`
+- [ ] **`GameRow` and `PickRow` declare an `updated_at` that does not exist.**
+      `src/lib/supabase.ts` types both with `updated_at: string`; the live
+      `games` and `picks` tables have no such column (only `profiles` does).
+      Nothing reads it, so this is a lying type rather than a live bug — but any
+      code trusting it gets `undefined` at runtime with the compiler's approval.
+      Found by the 2026-09-14 capture.
+
+- [ ] **Four foreign keys are nullable.** `games.week_id`, `picks.user_id`,
+      `picks.week_id` and `picks.game_id` all permit NULL. A NULL `user_id`
+      makes `auth.uid() = user_id` evaluate to NULL rather than false. Found by
+      the 2026-09-14 capture; fixing it is a schema change and wants its own
+      migration.
+
+- [ ] **`0007` leaves one policy it should drop.** `"Allow authenticated users
+      to update games"` (`using (true) with check (true)`) is still live. It is
+      inert only because `0007` revoked the UPDATE grant — re-grant UPDATE on
+      `games` for any reason and every member can rewrite scores again, with no
+      policy change to notice in review. Found by the 2026-09-14 capture.
+
+- [x] **No `0000` baseline migration.** `profiles`, `weeks`, `games` and `picks`
       were created by hand in the dashboard and no migration creates them, so
       the migrations cannot be replayed onto an empty database. That is what
       blocks porting the NFL app's `supabase/test/run.sh`, which applies every
