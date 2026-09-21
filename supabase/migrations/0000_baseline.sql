@@ -29,10 +29,10 @@
 -- APPLYING THIS TO AN EMPTY DATABASE
 -- ---------------------------------------------------------------------------
 -- `profiles.id` references `auth.users(id)`, and the policies call `auth.uid()`.
--- Neither exists in a bare Postgres — Supabase provides them. A harness must
--- create a stand-in for both before applying this file. That stub belongs in
--- the harness, not here, so that this file stays a faithful record of what
--- production actually looks like.
+-- Neither exists in a bare Postgres — Supabase provides them. The stand-in for
+-- both is `supabase/test/00_supabase_fixture.sql`, applied before this file by
+-- `supabase/test/run.sh`. It lives there rather than here so that this file
+-- stays a faithful record of what production actually looks like.
 --
 -- Idempotent, in the style of the rest of the series: re-running it is safe.
 

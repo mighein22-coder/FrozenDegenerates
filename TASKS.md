@@ -14,13 +14,23 @@ Operational detail lives in `docs/OPERATIONS.md`.
       landed 2026-09-14, assembled from a 392-row capture of production and
       committed alongside it as `supabase/baseline/capture-2026-09-14.csv`.
       **Not yet executed anywhere** — verifying it by replaying `0000`–`0009`
-      onto an empty database needs Docker, which is not installed on the dev
-      machine, and so does porting `supabase/test/run.sh` afterwards. Until then
-      it is transcribed-and-reviewed, not proven.
+      onto an empty database needs a Postgres 16 server and `psql`, neither of
+      which is installed on the dev machine. Until then it is
+      transcribed-and-reviewed, not proven. The harness itself is now ported
+      and waiting in `supabase/test/`.
 
       It has already paid for itself once: the capture is what found that `0004`
       had gone missing from production (ASSESSMENT.md #27), a month after being
       recorded as applied and verified.
+
+- [~] **Policy test harness.** Ported from the NFL app into `supabase/test/`:
+      the Supabase fixture (roles, `auth.users`, `auth.uid()`), `run.sh`, and
+      `01_security.sql` — assertions covering every hole `0001`–`0009` closes,
+      including the `0004` deadline regression and the "scoring still works on
+      a locked week" case. **Never executed**: no Postgres on the dev machine.
+      It needs a Postgres 16 server and `psql`, not Docker — an earlier note
+      here claimed Docker and was simply wrong; `run.sh` is plain `psql`
+      against whatever `PGHOST`/`PGPORT`/`PGUSER` point at.
 
 ## Done
 
