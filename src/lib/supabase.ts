@@ -47,7 +47,12 @@ export type GameRow = {
   home_score: number | null;
   away_score: number | null;
   created_at: string;
-  updated_at: string;
+  // No `updated_at`. The column does not exist on `games` -- only `profiles`
+  // has one. This type claimed it until 2026-09-22, when the schema capture
+  // behind `supabase/migrations/0000_baseline.sql` showed otherwise. Nothing
+  // read it, so nothing broke; it would simply have been `undefined` at
+  // runtime with the compiler's blessing. Do not add it back without adding
+  // the column.
 };
 
 export type PickRow = {
@@ -60,7 +65,7 @@ export type PickRow = {
   points_earned: number;
   result: 'WIN' | 'LOSS' | 'PENDING';
   created_at: string;
-  updated_at: string;
+  // No `updated_at` here either -- see the note on `GameRow`.
 };
 
 /**

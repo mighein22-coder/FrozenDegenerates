@@ -162,12 +162,14 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ### Known issues not yet scheduled (continued)
 
-- [ ] **`GameRow` and `PickRow` declare an `updated_at` that does not exist.**
-      `src/lib/supabase.ts` types both with `updated_at: string`; the live
-      `games` and `picks` tables have no such column (only `profiles` does).
-      Nothing reads it, so this is a lying type rather than a live bug — but any
-      code trusting it gets `undefined` at runtime with the compiler's approval.
-      Found by the 2026-09-14 capture.
+- [x] **`GameRow` and `PickRow` declared an `updated_at` that does not exist.**
+      ✅ Removed 2026-09-22. `src/lib/supabase.ts` typed both with
+      `updated_at: string`; the live `games` and `picks` tables have no such
+      column — only `profiles` does, and that one is real. Nothing read either
+      phantom, so this was a lying type rather than a live bug, but any code
+      trusting it would have got `undefined` at runtime with the compiler's
+      approval. Both sites now carry a note saying why the field is absent, so
+      it does not get helpfully added back. Found by the 2026-09-14 capture.
 
 - [ ] **Four foreign keys are nullable.** `games.week_id`, `picks.user_id`,
       `picks.week_id` and `picks.game_id` all permit NULL. A NULL `user_id`
