@@ -1,0 +1,29 @@
+{
+  // Typechecks the Netlify Functions, which `src/tsconfig.json` never covered —
+  // it has no `include`, so it picks up `src/` and nothing else. The functions
+  // are compiled by Netlify's esbuild at deploy time, and esbuild strips types
+  // without checking them, so until this file existed nothing checked them at
+  // all. `npm --prefix src run typecheck` now runs both projects.
+  //
+  // `typeRoots` reaches into `src/node_modules` deliberately: `@types/node` and
+  // the TypeScript compiler both live there already, and duplicating them here
+  // would add a package to install on every deploy to check code that deploys
+  // fine either way.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "typeRoots": ["./node_modules/@types", "../../src/node_modules/@types"],
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "noEmit": true
+  },
+  // `_shared/etTime.ts` re-exports from `src/lib/timezone.ts`, so that file is
+  // pulled in by the import graph; it does not need listing.
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}
