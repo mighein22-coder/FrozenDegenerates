@@ -194,8 +194,9 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     policy-test harness that `0000` unblocks is the thing that would have caught
     it in August rather than in September.
 
-- [ ] **28. `save_picks` cannot insert — nobody can submit a pick sheet.**
-  ⚠️ **Live. Found 2026-09-21 by the first run of `supabase/test/run.sh`.**
+- [x] **28. `save_picks` could not insert — nobody could submit a pick sheet.**
+  ✅ **Found 2026-09-21 by the first run of `supabase/test/run.sh`; closed
+  2026-09-22 by applying `0010`.**
   - `0005` builds the insert from the JSON payload and passes `e->>'gameId'`
     — text — into `picks.game_id`, which is `uuid`. Postgres does not coerce
     text to uuid in assignment context, so the statement raises:
@@ -208,8 +209,10 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     broken since `0005` was applied on 2026-08-23.** Nobody hit it because the
     NHL regular season had not started — there was nothing to submit. The first
     member to try in October would have.
-  - Fixed by `supabase/migrations/0010_fix_save_picks_game_id_cast.sql`.
-    **Not yet applied to production.**
+  - Fixed by `supabase/migrations/0010_fix_save_picks_game_id_cast.sql`,
+    **applied 2026-09-22 and verified the way that matters — by submitting a
+    sheet from the Picks view**, which is the path that had been broken. A
+    query would not have proved it; the query was never what was failing.
   - Before applying, confirm production really has the bug — a project-level
     permissive cast would mask it:
 
@@ -221,7 +224,7 @@ Treat the pool's standings as tamperable until 15–18 are closed.
 
     A text→uuid row with `castcontext` 'a' or 'i' means the live function
     works. No row — stock Postgres — means it does not. Applying `0010` is
-    correct either way.
+    correct either way; it was run before applying, and the repair was real.
   - **How three readings missed it.** This function was read closely when
     `0005` was written, again during the `0004` investigation, and again when
     the baseline capture was assembled. Every reading was about *policies and
