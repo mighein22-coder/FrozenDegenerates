@@ -37,11 +37,11 @@ it cannot be done from the repo.*
 filtering it down to only what predates `0001` (see below).
 
 **3. Port the harness.** Bring over the NFL app's `supabase/test/run.sh`, now
-that `0000` gives it a database to build. Needs Docker, which is not currently
-installed on the dev machine.
+that `0000` gives it a database to build. **Done** — it lives in
+`supabase/test/`. Running it needs a Postgres 16 server and `psql`; it does
+*not* need Docker, and never did.
 
-Step 1 is the blocking one. Steps 2 and 3 are ordinary work once its output
-exists.
+All three steps are complete as written. What is left is running the thing.
 
 ## What `0000` must and must not contain
 
@@ -182,9 +182,13 @@ select evtname, evtevent, evtenabled, evttags,
 - [x] Capture script written
 - [x] Capture run against production (2026-09-14)
 - [x] `0000_baseline.sql` assembled from the output
-- [ ] Baseline verified by replay (apply `0000`–`0009` to an empty database) —
-      **needs Docker, not installed on the dev machine.** Until then `0000` is
-      transcribed-and-reviewed, not executed.
-- [ ] `supabase/test/run.sh` ported — same dependency
+- [x] `supabase/test/run.sh` ported, with the fixture and the assertions
+- [x] **Baseline verified by replay.** `0000`–`0010` apply in order to an empty
+      database and 60 assertions pass, on PostgreSQL 17.4. `0000` is proven,
+      not just reviewed. Not Docker: `run.sh` is plain `psql` against whatever
+      `PGHOST`/`PGPORT`/`PGUSER` point at.
+- [x] The replay immediately earned its keep: it found that `save_picks` could
+      not insert at all (ASSESSMENT.md #28) and that re-applying `0002` alone
+      reopened self-serve membership.
 - [ ] Event trigger behind `rls_auto_enable()` captured, if it should be in the
       baseline at all

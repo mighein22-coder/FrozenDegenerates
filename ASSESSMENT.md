@@ -194,6 +194,42 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     policy-test harness that `0000` unblocks is the thing that would have caught
     it in August rather than in September.
 
+- [ ] **28. `save_picks` cannot insert — nobody can submit a pick sheet.**
+  ⚠️ **Live. Found 2026-09-21 by the first run of `supabase/test/run.sh`.**
+  - `0005` builds the insert from the JSON payload and passes `e->>'gameId'`
+    — text — into `picks.game_id`, which is `uuid`. Postgres does not coerce
+    text to uuid in assignment context, so the statement raises:
+    `column "game_id" is of type uuid but expression is of type text`.
+  - The other four columns are fine, which is why this reads as correct:
+    `user_id` is already uuid, `week_id` and `selected_team_id` are text, and
+    `confidence` carries an explicit `::int`. `game_id` is the one that needed
+    a cast and did not get one.
+  - **Since `savePicks` routes through this function, pick submission has been
+    broken since `0005` was applied on 2026-08-23.** Nobody hit it because the
+    NHL regular season had not started — there was nothing to submit. The first
+    member to try in October would have.
+  - Fixed by `supabase/migrations/0010_fix_save_picks_game_id_cast.sql`.
+    **Not yet applied to production.**
+  - Before applying, confirm production really has the bug — a project-level
+    permissive cast would mask it:
+
+    ```sql
+    select castsource::regtype, casttarget::regtype, castcontext
+      from pg_cast
+     where casttarget = 'uuid'::regtype;
+    ```
+
+    A text→uuid row with `castcontext` 'a' or 'i' means the live function
+    works. No row — stock Postgres — means it does not. Applying `0010` is
+    correct either way.
+  - **How three readings missed it.** This function was read closely when
+    `0005` was written, again during the `0004` investigation, and again when
+    the baseline capture was assembled. Every reading was about *policies and
+    authorisation*, and the bug is a type error two lines below the part
+    everyone was looking at. Executing it caught it in seconds.
+  - Note the capture gap this exposes: `baseline/capture.sql` does not read
+    `pg_cast`, so the repo cannot rule out the masking cast on its own.
+
 ---
 
 ## HIGH — Fix Before Season Is in Full Swing

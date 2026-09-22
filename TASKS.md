@@ -10,17 +10,37 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## In progress
 
-- [~] **`0000` baseline migration.** Started 2026-09-13; `0000_baseline.sql`
+- [x] **Policy test harness** — `supabase/test/`: the Supabase fixture (roles,
+      `auth.users`, `auth.uid()`, `auth.jwt()`), `run.sh`, and `01_security.sql`
+      with 60 assertions covering every hole `0001`–`0009` closes, the `0004`
+      deadline regression, and the case that would be worst to get wrong —
+      scoring still working on a locked week. Runs green. Needs a Postgres
+      server and `psql`, **not Docker**; an earlier note here said Docker and
+      was simply wrong.
+
+      Its first run found two defects nobody had read their way to: `save_picks`
+      could not insert (ASSESSMENT #28), and re-applying `0002` alone reopened
+      self-serve membership — now guarded so a clean replay still opens the
+      hole, as history did, while a re-apply is a no-op.
+
+- [x] **`0000` baseline migration.** Started 2026-09-13; `0000_baseline.sql`
       landed 2026-09-14, assembled from a 392-row capture of production and
       committed alongside it as `supabase/baseline/capture-2026-09-14.csv`.
-      **Not yet executed anywhere** — verifying it by replaying `0000`–`0009`
-      onto an empty database needs Docker, which is not installed on the dev
-      machine, and so does porting `supabase/test/run.sh` afterwards. Until then
-      it is transcribed-and-reviewed, not proven.
+      **Verified by replay 2026-09-21**: `0000`–`0010` apply in order to an
+      empty database and 60 assertions pass, on PostgreSQL 17.4. The baseline
+      is proven, not just reviewed.
 
       It has already paid for itself once: the capture is what found that `0004`
       had gone missing from production (ASSESSMENT.md #27), a month after being
       recorded as applied and verified.
+
+- [ ] **⚠️ Apply `0010_fix_save_picks_game_id_cast.sql` to production.**
+      `save_picks` cannot insert — `e->>'gameId'` is text going into a uuid
+      column — so **no member can submit a pick sheet**, and has not been able
+      to since `0005` landed on 2026-08-23. It went unnoticed because the
+      season had not started. Run the `pg_cast` check in ASSESSMENT.md #28
+      first to confirm production has the bug, apply `0010`, then submit a
+      sheet from the Picks view. **Before the season opens.**
 
 ## Done
 

@@ -28,6 +28,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0007_lock_game_score_writes.sql` | ☑ applied 2026-08-23 | Stops anyone — including logged-out visitors — rewriting game scores, which decide every pick |
 | `0008_lock_week_deadline_writes.sql` | ☑ applied 2026-08-23 | Stops a member moving `weeks.saturday_date` — the column every deadline rule reads |
 | `0009_invites_and_membership.sql` | ☑ applied (date not recorded) | Self-serve signup gated by invite codes. Supersedes 0002: a `profiles` row can no longer be self-inserted, only created by `redeem_invite()` |
+| `0010_fix_save_picks_game_id_cast.sql` | ⚠️ **not yet applied — pick submission is broken until it is** | Adds the `::uuid` cast `0005` omitted. Without it `save_picks` raises on every call, so no member can submit a sheet. See ASSESSMENT.md #28 |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -421,25 +422,47 @@ select grantee, table_name, column_name
    and table_name = 'profiles';
 ```
 
-### Why there is no automated test harness
+### The automated test harness
 
-The sibling NFL app runs these assertions against a throwaway Postgres
-(`supabase/test/run.sh`), applying every migration in order and re-checking
-afterwards. That cannot be ported here as-is, and the reason is worth recording:
-**no migration in this repo creates `profiles`, `weeks`, `games` or `picks`.**
-Those tables were made by hand in the dashboard, and `PLANNING.md` records that
-the SQL which used to document them drifted from production and was deleted.
+`supabase/test/run.sh` applies every migration in order to a throwaway Postgres
+and then runs the assertions in `01_security.sql` against the result. Every
+line should read `ok`; a `FAIL` is a real hole.
 
-So a harness here would have to start from a *reconstructed* schema — a guess at
-the live shape, already known to be missing columns the app uses
-(`games.nhl_game_id`, the `updated_at` columns). Assertions passing against a
-guessed schema would be worse than no assertions: they would look like proof.
+```bash
+PGHOST=/tmp PGPORT=5432 PGUSER=postgres ./supabase/test/run.sh
+```
 
-Closing this properly means capturing production's real DDL into an `0000`
-baseline migration first. **That work has started — see
-[`supabase/baseline/`](baseline/).** It needs one thing from the pool admin:
-running [`baseline/capture.sql`](baseline/capture.sql) in the SQL editor and
-keeping the output. The script is read-only and safe during an open week.
+It needs a Postgres 16 server and `psql`. It does **not** need Docker — any
+reachable server will do, and every connection setting is overridable from the
+environment. The server must allow creating databases, since each run drops and
+recreates one; against a hosted Supabase project, swap the recreate for
+`drop schema public cascade; create schema public;`.
 
-Until the baseline exists, the two queries above run in the dashboard against
-the actual database, which is the thing that matters.
+Ported from the sibling NFL app, whose copy carries the line "The NHL app found
+four of these holes in production" — this harness exists because of this repo's
+history. It has since found a fifth.
+
+**This was blocked for a long time, and the reason is worth keeping.** No
+migration created `profiles`, `weeks`, `games` or `picks`; they were made by
+hand in the dashboard, and `PLANNING.md` records that the SQL which used to
+document them drifted from production and was deleted. A harness would have had
+to start from a *guessed* schema, and assertions passing against a guess are
+worse than no assertions — they look like proof. `0000_baseline.sql` closed
+that by capturing production's real DDL; see [`supabase/baseline/`](baseline/).
+
+**It runs green: 60 assertions, on PostgreSQL 17.4.** Which means `0000`
+replays — every migration applies in order to an empty database, so the
+baseline is now proven rather than merely reviewed.
+
+The first run found two real defects that three careful readings had not:
+
+1. **`save_picks` could not insert** — ASSESSMENT.md #28, fixed by `0010`.
+2. **Re-applying `0002` alone reopened self-serve membership**, putting back
+   the `profiles` INSERT policy and grant that `0009` removed. The operative
+   half of `0002` now sits behind a guard keyed on `public.invites` existing,
+   so a clean replay still opens the hole exactly as history did — which is
+   what makes the `0009` assertions mean anything — while re-applying the file
+   afterwards is a no-op.
+
+The two dashboard queries above remain the check against *production*, which a
+local replay can never stand in for. Run them after any migration work.
