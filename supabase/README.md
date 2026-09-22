@@ -28,7 +28,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0007_lock_game_score_writes.sql` | ☑ applied 2026-08-23 | Stops anyone — including logged-out visitors — rewriting game scores, which decide every pick |
 | `0008_lock_week_deadline_writes.sql` | ☑ applied 2026-08-23 | Stops a member moving `weeks.saturday_date` — the column every deadline rule reads |
 | `0009_invites_and_membership.sql` | ☑ applied (date not recorded) | Self-serve signup gated by invite codes. Supersedes 0002: a `profiles` row can no longer be self-inserted, only created by `redeem_invite()` |
-| `0010_fix_save_picks_game_id_cast.sql` | ⚠️ **not yet applied — pick submission is broken until it is** | Adds the `::uuid` cast `0005` omitted. Without it `save_picks` raises on every call, so no member can submit a sheet. See ASSESSMENT.md #28 |
+| `0010_fix_save_picks_game_id_cast.sql` | ☑ applied 2026-09-22 | Adds the `::uuid` cast `0005` omitted. Without it `save_picks` raised on every call and no member could submit a sheet. Verified by submitting one from the Picks view. See ASSESSMENT.md #28 |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends

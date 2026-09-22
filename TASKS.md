@@ -10,6 +10,13 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## In progress
 
+- [x] **Pick submission was broken, and is fixed** (ASSESSMENT #28).
+      `save_picks` passed `e->>'gameId'` — text — into a uuid column, so every
+      call raised and no member could submit a sheet. Broken from `0005` on
+      2026-08-23 until `0010` on 2026-09-22; nobody hit it because the season
+      had not started. Verified by submitting a sheet from the Picks view.
+      Found by the harness on its first run, not by reading.
+
 - [x] **Policy test harness** — `supabase/test/`: the Supabase fixture (roles,
       `auth.users`, `auth.uid()`, `auth.jwt()`), `run.sh`, and `01_security.sql`
       with 60 assertions covering every hole `0001`–`0009` closes, the `0004`
@@ -33,14 +40,6 @@ Operational detail lives in `docs/OPERATIONS.md`.
       It has already paid for itself once: the capture is what found that `0004`
       had gone missing from production (ASSESSMENT.md #27), a month after being
       recorded as applied and verified.
-
-- [ ] **⚠️ Apply `0010_fix_save_picks_game_id_cast.sql` to production.**
-      `save_picks` cannot insert — `e->>'gameId'` is text going into a uuid
-      column — so **no member can submit a pick sheet**, and has not been able
-      to since `0005` landed on 2026-08-23. It went unnoticed because the
-      season had not started. Run the `pg_cast` check in ASSESSMENT.md #28
-      first to confirm production has the bug, apply `0010`, then submit a
-      sheet from the Picks view. **Before the season opens.**
 
 ## Done
 
