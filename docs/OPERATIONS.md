@@ -30,14 +30,18 @@ Anything prefixed `VITE_` is compiled into the JS every visitor downloads.
 
 | Name | Purpose |
 |---|---|
-| `SUPABASE_SERVICE_ROLE_KEY` | Full database access, bypasses RLS. Used by `sync-week`. |
-| `SUPABASE_URL` | Optional; `sync-week` falls back to this if `VITE_SUPABASE_URL` is unset. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Full database access, bypasses RLS. Used by `sync-week` and `scheduled-sync`. |
+| `SUPABASE_URL` | Optional; both fall back to this if `VITE_SUPABASE_URL` is unset. |
 
 `VITE_SYNC_WEEK_SECRET` and `SYNC_WEEK_SECRET` are gone — removed from the
 Netlify dashboard 2026-08-23. `sync-week` authenticates the caller's Supabase
 access token instead of a shared secret; the client half of that pair was
 inlined into the public bundle, so it authenticated nobody. Do not reintroduce
 either name.
+
+`scheduled-sync` adds no variable of its own. It runs the scoring pass in
+process rather than calling `sync-week` over HTTP, so there is no request to
+authenticate and no secret to store.
 
 ## Functions
 
@@ -46,10 +50,21 @@ either name.
 | `nhl-schedule` | App, when a week has no games yet | Proxies `api-web.nhle.com/v1/schedule/{date}` and returns rows shaped for insert. No auth. |
 | `sync-week` | App on login and on the results view; admin panel | The workhorse. Service-role client: marks games FINAL with scores, resolves PENDING picks (win → points = confidence), and marks the week COMPLETED once all games are final or it is past 4:00 AM ET Sunday. Idempotent. **Requires a `Bearer` Supabase access token** from any signed-in member — not admin-only, since scoring has to happen whoever opens the app. |
 | `team-records` | Picks view | `standings/now` → `{ABBR: "W-L-OTL"}`, cached an hour. No auth. |
+| `scheduled-sync` | Cron, every 15 minutes | Runs the same scoring pass as `sync-week`, on whichever weeks need it. Takes no input and needs no credential — see below. |
 
 `netlify/functions/_shared/etTime.ts` re-exports the app's timezone helpers so
 the functions and the browser agree on when a week locks and closes. Do not
 reimplement DST logic in a function — that is exactly the bug that was removed.
+
+`netlify/functions/_shared/syncWeek.ts` holds the scoring pass itself. Both
+`sync-week` (with auth, over HTTP) and `scheduled-sync` (on cron, in-process)
+call it, so there is one implementation of what scoring means.
+
+The functions have their own `tsconfig.json`. `npm --prefix src run typecheck`
+runs it as a second project — `src/tsconfig.json` only ever covered `src/`, and
+Netlify's esbuild strips types without checking them, so before that nothing
+checked the functions at all. It needs `netlify/functions/node_modules` present;
+install both trees.
 
 ## The weekly cycle
 
@@ -58,16 +73,72 @@ reimplement DST logic in a function — that is exactly the bug that was removed
 | Monday 6:00 AM | `getTargetSaturdayDate()` rolls over to the coming Saturday. The next member to log in creates the `weeks` row and the app fetches that Saturday's games. |
 | Through the week | Members submit five picks with unique confidence 1–5. |
 | **Saturday 10:00 AM** | Pick deadline. Picks lock and, once `0003` is applied, everyone's picks become visible to everyone. |
-| Saturday evening | Games play. Scores update only when somebody opens the app — see the caveat below. |
-| Sunday 4:00 AM | The week is marked COMPLETED, whether or not every game went final. |
+| Saturday evening | Games play. `scheduled-sync` picks up finals and resolves picks within 15 minutes, with no one signed in. |
+| Sunday 4:00 AM | The week is marked COMPLETED, whether or not every game went final. The first scheduled run after 4:00 AM does it. |
 
 **Weeks are created lazily, by whoever logs in first after Monday 6 AM.** If
 nobody logs in, no week exists and no games are fetched. There is no scheduled
 job doing this.
 
-**Scores only sync when a human loads the app.** `sync-week` runs on login and on
-the results view. If nobody opens the app all weekend, standings stay stale until
-someone does. Automating this is on the roadmap in `TASKS.md`.
+## Automated score sync
+
+`scheduled-sync` runs the scoring pass on a cron, so standings move whether or
+not anyone opens the site. The schedule lives in `netlify.toml`:
+
+```toml
+[functions."scheduled-sync"]
+  schedule = "*/15 * * * *"
+```
+
+**It needs no credential.** It does not call `/.netlify/functions/sync-week` over
+HTTP — it imports the scoring pass from `_shared/syncWeek.ts` and runs it
+in-process. A cron run has no Supabase session and no `profiles` row, so it could
+not satisfy that endpoint's auth, and letting it through would mean inventing a
+second shared secret. That is exactly the `VITE_SYNC_WEEK_SECRET` mistake
+(ASSESSMENT #3, reversed in #26). Calling the function directly means there is
+nothing to forge, because there is no request. **Do not add a secret to make the
+HTTP path work for cron.**
+
+**Every 15 minutes is cheaper than it looks.** The function first asks which
+weeks are past their Saturday 10:00 AM ET deadline and not yet COMPLETED. From
+Sunday morning to Saturday morning that is empty, and the run ends after one
+SELECT — no NHL API call, no writes. Roughly 2,900 invocations a month against a
+125,000 free-tier allowance.
+
+The cron is flat rather than pinned to Saturday night on purpose. Netlify cron is
+UTC; the window that matters is Eastern, and it shifts an hour twice a season. A
+UTC window would need padding and would still be an edge that nobody notices is
+wrong until a Saturday night. Letting the query decide has no edges.
+
+**A long catch-up run stops itself.** After 20 seconds the run stops starting
+new weeks and defers the rest to the next tick, rather than being killed by
+Netlify's execution limit mid-week. Nothing is lost either way — every write
+commits on its own, and the next run resumes from whatever is still PENDING —
+but stopping deliberately means the log says what was deferred. A normal
+Saturday is one week and finishes in a second or two.
+
+**It does not create weeks.** Seeding a week and its schedule is still lazy, done
+by the first member to log in after Monday 6:00 AM ET. If nobody logs in all
+week, there is no week for the scheduler to score. That is the remaining hole in
+"runs without a human", and it is a separate job with separate failure modes.
+
+**The app still syncs on login and on the results view.** Kept deliberately: it
+costs nothing on a COMPLETED week (the app skips the call entirely), and it is
+the fallback if the schedule is disabled, if a deploy drops it, or in local dev
+and deploy previews where no cron runs.
+
+### If scores stop moving
+
+1. Netlify dashboard → **Logs → Functions → scheduled-sync**. Every run logs a
+   one-line summary: games updated, picks resolved, weeks closed, errors.
+   `No weeks need syncing` is the normal mid-week line.
+2. Netlify dashboard → **Project configuration → Functions** lists the schedule
+   it actually registered. If `scheduled-sync` is not there, the `netlify.toml`
+   block did not deploy.
+3. A run that ends `Cannot start: Server misconfiguration` means
+   `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_URL` is missing from the environment.
+4. Anyone can force a sync meanwhile: sign in and open the League Matrix for the
+   week, or use the admin panel's sync button.
 
 ## Routes
 
@@ -298,13 +369,26 @@ netlify dev          # from the repo root: Vite on :3000, functions on :8888
 Use `netlify dev`, not `npm run dev` — the plain Vite server does not serve the
 functions, so the schedule fetch and score sync will fail.
 
+The cron does not fire in `netlify dev`. Run it by hand:
+
+```bash
+netlify functions:invoke scheduled-sync
+```
+
+It takes no input, so that is the whole invocation. It will act on the real
+database your `.env` points at — which is production, unless you have a separate
+Supabase project.
+
 Checks:
 
 ```bash
-npm --prefix src run typecheck
+npm --prefix src run typecheck   # covers src/ AND netlify/functions/
 npm --prefix src test
 npm --prefix src run build
 ```
+
+`typecheck` needs both dependency trees installed, since it typechecks the
+functions against `netlify/functions/node_modules`.
 
 There is no linter and no CI. `vite build` does **not** typecheck, so run
 `typecheck` explicitly before pushing — that is how twelve type errors accumulated

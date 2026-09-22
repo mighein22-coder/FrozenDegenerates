@@ -14,6 +14,19 @@
 [functions]
   directory = "netlify/functions"
 
+# Automated score sync. Runs the same scoring pass the app triggers on login,
+# so standings move whether or not anyone opens the site.
+#
+# Cron is UTC. Every 15 minutes, on purpose: the function asks the database
+# which weeks are past their Saturday 10:00 AM ET deadline and not yet
+# COMPLETED, and that is empty most of the week — those runs cost one SELECT
+# and stop. Real work happens Saturday morning through the 4:00 AM ET Sunday
+# close, where 15 minutes is about how stale a score can get before someone
+# notices. A window pinned to Saturday night would need DST padding in UTC and
+# would be wrong twice a season; this has no edges.
+[functions."scheduled-sync"]
+  schedule = "*/15 * * * *"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -32,4 +45,6 @@
 #   SUPABASE_SERVICE_ROLE_KEY
 #
 # sync-week authenticates the caller's Supabase access token, so there is no
-# shared secret to configure on either side.
+# shared secret to configure on either side. scheduled-sync needs no credential
+# at all: it imports the scoring pass instead of calling sync-week over HTTP,
+# so there is no request to authenticate.

@@ -331,6 +331,12 @@ Treat the pool's standings as tamperable until 15–18 are closed.
     would freeze scoring until an admin signed in — breaking the "compute results
     when a user logs in" requirement. Any authenticated member is the correct gate
   - Both env vars deleted from the Netlify dashboard 2026-08-23
+  - **Held when automated sync landed (2026-09-22).** A cron run has no session
+    and no `profiles` row, so the obvious way to schedule `sync-week` is a
+    shared secret — this finding, reintroduced. `scheduled-sync` imports the
+    scoring pass and runs it in process instead, so there is no request to
+    authenticate and no second credential anywhere. Do not "fix" the scheduled
+    path by giving it a token
 
 ---
 

@@ -10,6 +10,13 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## In progress
 
+- [ ] **Watch the first live Saturday (2026-10-03).** The scheduled sync has
+      never run against a real played week — the season had not started when it
+      landed. Check Netlify → Logs → Functions → `scheduled-sync` that evening:
+      idle runs should say `No weeks need syncing`, and runs after the first
+      final should report games updated and picks resolved. Confirm the week
+      flips COMPLETED on its own after 4:00 AM ET Sunday.
+
 - [x] **Pick submission was broken, and is fixed** (ASSESSMENT #28).
       `save_picks` passed `e->>'gameId'` — text — into a uuid column, so every
       call raised and no member could submit a sheet. Broken from `0005` on
@@ -196,8 +203,34 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ### Planned features
 
-- [ ] Automated score sync on a schedule. Scores only move today when a human
-      opens the app.
+- [x] **Automated score sync on a schedule.** ✅ Landed 2026-09-22.
+      `netlify/functions/scheduled-sync.ts` runs every 15 minutes
+      (`netlify.toml`), so standings move with nobody signed in.
+
+      The scoring pass moved out of `sync-week`'s handler into
+      `_shared/syncWeek.ts`; `sync-week` is now auth + parse + call, and the
+      cron calls the same function **in process**. That is the whole security
+      design: a cron run has no session and no `profiles` row, so scheduling the
+      HTTP endpoint would have meant a second shared secret — ASSESSMENT #3/#26
+      all over again. No request, nothing to forge.
+
+      Running flat every 15 minutes rather than pinning a Saturday-night window
+      is deliberate: Netlify cron is UTC, the window is Eastern, and a padded
+      UTC window is an edge that goes wrong twice a season. `getWeeksToSync`
+      returns nothing outside Saturday 10:00 AM → Sunday 4:00 AM ET, so an
+      idle run is one SELECT.
+
+      The on-login / results-view sync is **kept**, as the fallback for a
+      disabled schedule, deploy previews and local dev. Weeks are still created
+      lazily by the first member to log in — the scheduler scores weeks, it does
+      not seed them.
+
+      Verified by running the bundled function against a stub PostgREST and a
+      stub NHL API: a stale week went FINAL, three picks resolved, the week
+      closed, an already-settled pick was left alone, and a second run was a
+      no-op. 18 unit tests cover `getWeeksToSync` across both DST sides.
+      Not yet observed against a real played week — the season opens
+      2026-10-03.
 - [x] Self-serve signup gated by invites. `0009_invites_and_membership.sql`
       plus a signup mode on `LoginView`, `RedeemInviteView`, and an Invites
       section in the Admin Panel. **This was a security fix too**: the pool was

@@ -18,7 +18,7 @@ standings — so a slow start doesn't put the rest of the year out of reach.
 | Monday 6:00 AM | The week rolls over to the coming Saturday; the app fetches that day's NHL schedule |
 | Through the week | Members pick five games and assign confidence 1–5, no duplicates |
 | **Saturday 10:00 AM** | Picks lock, and the league's selections become visible |
-| Saturday evening | Games play; scores sync from the NHL API |
+| Saturday evening | Games play; a scheduled job syncs scores from the NHL API every 15 minutes |
 | Sunday 4:00 AM | The week closes and results are final |
 
 ## Views
@@ -82,11 +82,8 @@ reference. It is never built or deployed.
 
 Tracked in full in `TASKS.md`. The ones worth knowing up front:
 
-- **Scores only sync when someone opens the app.** There is no scheduled job.
-- **Weeks are created lazily** by whoever logs in first after Monday 6 AM.
-- **No signup UI.** Accounts are created by hand in the Supabase dashboard.
-- **`savePicks` is not transactional** and can lose a member's picks if the
-  insert fails after the delete.
+- **Weeks are created lazily** by whoever logs in first after Monday 6 AM. The
+  scheduled sync scores weeks; it does not create them.
 
 ## Cost
 
