@@ -10,6 +10,49 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## In progress
 
+- [ ] **Preseason scoring dry run (Saturday 2026-09-26).** Runs the full cycle
+      against the production database a week before it counts, using the 14
+      preseason games on 9/26. No code change needed — the schedule fetch and
+      the scoring pass don't filter by game type.
+      - Before 10:00 AM ET Saturday: log in (the first login seeds
+        `week-2026-09-26` and its games) and submit a sheet; a second account
+        also tests that picks are hidden until the deadline.
+      - 10:00 AM ET: picks lock and become visible in the League Matrix.
+      - From ~5:30 PM ET: `scheduled-sync` should score finals with nobody
+        signed in (Netlify → Logs → Functions → `scheduled-sync`). Run the
+        mismatch query below; it should return zero rows.
+      - By Sunday 4:00 AM ET: the week flips COMPLETED on its own.
+
+      Expected oddities, not bugs: points count toward the Season table but no
+      segment table (9/26 is before `SEASON_START`); team records show last
+      season's finals (`standings/now` still points at April); MTL and OTT play
+      each other twice (split squads), as two separate games.
+
+      ```sql
+      select p.id, g.away_team_id || ' @ ' || g.home_team_id as game,
+             g.away_score, g.home_score, p.selected_team_id, p.confidence,
+             p.result, p.points_earned
+      from picks p join games g on g.id = p.game_id
+      where p.week_id = 'week-2026-09-26' and g.status = 'FINAL'
+        and (p.result = 'PENDING'
+             or p.points_earned <> case
+                  when (g.home_score > g.away_score and p.selected_team_id = g.home_team_id)
+                    or (g.away_score > g.home_score and p.selected_team_id = g.away_team_id)
+                  then p.confidence else 0 end);
+      ```
+
+- [ ] **Remove the dry-run data (Monday 2026-09-28, after 6:00 AM ET).** Not
+      before 6:00 AM: until then `getTargetSaturdayDate()` still targets 9/26,
+      and the next login would recreate the week and re-fetch its games. This
+      leaves `week-2026-10-03` alone if someone has already seeded it. The same
+      timing applies to a full reset.
+
+      ```sql
+      delete from picks where week_id = 'week-2026-09-26';
+      delete from games where week_id = 'week-2026-09-26';
+      delete from weeks where id    = 'week-2026-09-26';
+      ```
+
 - [ ] **Watch the first live Saturday (2026-10-03).** The scheduled sync has
       never run against a real played week — the season had not started when it
       landed. Check Netlify → Logs → Functions → `scheduled-sync` that evening:
