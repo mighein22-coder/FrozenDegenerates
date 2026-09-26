@@ -160,6 +160,13 @@ Operational detail lives in `docs/OPERATIONS.md`.
       you're outside it. The old stat cards are gone. Returning to the
       dashboard refetches picks and games, so scheduled-sync results show up
       without a reload. Pure helpers in `src/lib/dashboard.ts`, 9 tests.
+- [x] **Submit Picks only when there is something to submit** (issue #34).
+      The button is enabled only for a valid sheet (5 picks, confidences 1–5)
+      that differs from the one last saved; undoing an edit disables it again.
+      `App.tsx` keeps a `savedPicks` baseline, set on load and after each save,
+      and `hasUnsavedPickChanges` in `src/lib/picks.ts` compares by game, team
+      and confidence, ignoring order. A clean saved sheet reads "Picks Saved".
+      Also disabled while saving, which closes a double-submit window.
 
 ---
 
