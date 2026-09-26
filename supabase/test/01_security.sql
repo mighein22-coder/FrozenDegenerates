@@ -79,7 +79,7 @@ insert into public.profiles (id, email, name, role) values
   ('22222222-2222-2222-2222-222222222222', 'honest@example.com',  'Honest',  'member'),
   ('33333333-3333-3333-3333-333333333333', 'boss@example.com',    'Boss',    'admin');
 
--- One week whose Saturday 10:00 ET deadline is long past, one far enough in
+-- One week whose Saturday deadline is long past, one far enough in
 -- the future to stay open. The deadline is computed from real `now()` by
 -- picks_revealed(), so these are real dates rather than a faked clock.
 insert into public.weeks (id, week_number, saturday_date, status) values

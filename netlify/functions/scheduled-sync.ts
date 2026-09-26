@@ -28,7 +28,7 @@ import { createAdminClient, getWeeksToSync, syncWeek, type SyncWeekResult } from
  * ## Cadence
  *
  * Every 15 minutes, around the clock, and that is cheaper than it sounds.
- * `getWeeksToSync` returns nothing unless a week is past its Saturday 10:00 AM ET
+ * `getWeeksToSync` returns nothing unless a week is past its Saturday 12:00 PM ET
  * deadline and not yet COMPLETED, so from Sunday morning to Saturday morning
  * each run is a single SELECT that finds no rows and stops — no NHL API call, no
  * writes. Real work happens only in the window that matters: Saturday morning

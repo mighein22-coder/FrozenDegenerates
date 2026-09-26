@@ -76,7 +76,7 @@ export function createAdminClient(): SupabaseClient {
  * COMPLETED weeks are excluded because syncing one cannot change anything — the
  * pass only touches non-FINAL games and PENDING picks, and a COMPLETED week has
  * neither outstanding. That exclusion is also what makes a frequent schedule
- * cheap: outside Saturday 10:00 AM ET through Sunday 4:00 AM ET this query
+ * cheap: outside Saturday 12:00 PM ET through Sunday 4:00 AM ET this query
  * returns nothing, and the run ends after one SELECT without touching the NHL
  * API.
  *

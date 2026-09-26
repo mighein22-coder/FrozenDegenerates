@@ -26,30 +26,30 @@ afterEach(() => {
 });
 
 describe('getPickDeadline', () => {
-  it('is 10:00 ET on the Saturday, as 14:00 UTC during EDT', () => {
-    expect(getPickDeadline('2026-10-17').toISOString()).toBe('2026-10-17T14:00:00.000Z');
+  it('is 12:00 ET on the Saturday, as 16:00 UTC during EDT', () => {
+    expect(getPickDeadline('2026-10-17').toISOString()).toBe('2026-10-17T16:00:00.000Z');
   });
 
-  it('is 10:00 ET on the Saturday, as 15:00 UTC during EST', () => {
-    expect(getPickDeadline('2026-12-05').toISOString()).toBe('2026-12-05T15:00:00.000Z');
+  it('is 12:00 ET on the Saturday, as 17:00 UTC during EST', () => {
+    expect(getPickDeadline('2026-12-05').toISOString()).toBe('2026-12-05T17:00:00.000Z');
   });
 
   it('shifts by an hour across the November DST boundary', () => {
     const beforeFallback = getPickDeadline('2026-10-31').toISOString();
     const afterFallback = getPickDeadline('2026-11-07').toISOString();
-    expect(beforeFallback).toBe('2026-10-31T14:00:00.000Z');
-    expect(afterFallback).toBe('2026-11-07T15:00:00.000Z');
+    expect(beforeFallback).toBe('2026-10-31T16:00:00.000Z');
+    expect(afterFallback).toBe('2026-11-07T17:00:00.000Z');
   });
 });
 
 describe('arePicksLocked', () => {
   it('is open one minute before the deadline', () => {
-    freeze('2026-12-05T14:59:00Z'); // 09:59 EST
+    freeze('2026-12-05T16:59:00Z'); // 11:59 EST
     expect(arePicksLocked('2026-12-05')).toBe(false);
   });
 
   it('is locked one minute after the deadline', () => {
-    freeze('2026-12-05T15:01:00Z'); // 10:01 EST
+    freeze('2026-12-05T17:01:00Z'); // 12:01 EST
     expect(arePicksLocked('2026-12-05')).toBe(true);
   });
 });

@@ -32,7 +32,7 @@ export function getTargetSaturdayDate(): Date {
 
 /**
  * Gets the pick deadline for a given Saturday date.
- * Deadline is Saturday at 10 AM ET.
+ * Deadline is Saturday at noon ET.
  * This function is DST-aware.
  *
  * NOTE: When a date string like '2026-01-17' is parsed with new Date(),
@@ -57,9 +57,9 @@ export function getPickDeadline(saturdayDate: Date | string): Date {
     day = saturdayDate.getUTCDate();
   }
 
-  // Create a date representing 10 AM ET on the Saturday
+  // Create a date representing noon ET on the Saturday
   // We create it in the ET timezone context
-  const deadlineET = new Date(year, month, day, 10, 0, 0, 0);
+  const deadlineET = new Date(year, month, day, 12, 0, 0, 0);
   return fromZonedTime(deadlineET, ET_TIMEZONE);
 }
 
