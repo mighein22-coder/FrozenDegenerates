@@ -451,8 +451,8 @@ function App() {
     }
   };
 
-  // Standings, derived rather than fetched. The dashboard always shows season
-  // position; the standings view follows the selected segment.
+  // Standings, derived rather than fetched. The standings view follows the
+  // selected segment; the dashboard follows the current one (below).
   const seasonStandings = useMemo(
     () => computeStandings(leagueProfiles, allPicks, { weekId: currentWeek?.id }),
     [leagueProfiles, allPicks, currentWeek]
@@ -483,6 +483,58 @@ function App() {
           }),
     [selectedSegment, seasonStandings, leagueProfiles, allPicks, currentWeek]
   );
+
+  // The dashboard's top five: the current segment, which is the scope the
+  // Standings screen opens on with no ?segment= — so the two always agree.
+  const dashboardSegment = useMemo(
+    () => getCurrentSegment(currentWeek?.startDate, segments),
+    [currentWeek, segments]
+  );
+
+  const dashboardStandings = useMemo(
+    () =>
+      computeStandings(leagueProfiles, allPicks, {
+        weekId: currentWeek?.id,
+        segment: dashboardSegment?.number ?? null
+      }),
+    [leagueProfiles, allPicks, currentWeek, dashboardSegment]
+  );
+
+  // The member's saved sheet for this week, with results. Taken from allPicks
+  // rather than currentPicks: the latter is the Picks screen's working copy and
+  // can hold unsaved edits, which the pool will never score.
+  const dashboardPicks = useMemo(
+    () =>
+      allPicks.filter(p => p.userId === user?.id && p.weekId === currentWeek?.id),
+    [allPicks, user, currentWeek]
+  );
+
+  // Coming back to the dashboard refetches picks and games, so results the
+  // scheduled sync has scored since login show up without a page reload. The
+  // first visit is already covered by loadInitialData.
+  const dashboardVisits = useRef(0);
+  useEffect(() => {
+    if (path !== '/' || !user) return;
+    if (dashboardVisits.current++ === 0) return;
+
+    const refreshDashboard = async () => {
+      try {
+        const [inputs, games] = await Promise.all([
+          supabaseService.getStandingsInputs(),
+          currentWeek ? supabaseService.getGamesByWeek(currentWeek.id) : Promise.resolve([])
+        ]);
+        setLeagueProfiles(inputs.profiles);
+        setAllPicks(inputs.picks);
+        // An empty result means the schedule is still being seeded; leave that
+        // to the games loader rather than blanking what is on screen.
+        if (games.length > 0) setWeekGames(games);
+      } catch (error) {
+        console.error('Error refreshing dashboard:', error);
+      }
+    };
+
+    refreshDashboard();
+  }, [path, user]);
 
 
   // Validation
@@ -628,9 +680,13 @@ function App() {
             element={
               <DashboardView
                 user={profile}
-                standings={seasonStandings}
-                currentPicks={currentPicks}
+                week={currentWeek}
+                weekGames={weekGames}
+                weekPicks={dashboardPicks}
                 isLocked={isLocked}
+                timeLeft={timeLeft}
+                standings={dashboardStandings}
+                segment={dashboardSegment}
               />
             }
           />
