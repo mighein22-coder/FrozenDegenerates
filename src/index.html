@@ -7,6 +7,26 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
     <script>
+      // Apply the saved theme before first paint, so a light-mode member does
+      // not see a flash of the dark palette. Mirrors resolveTheme() in
+      // lib/theme.ts — keep the two in step.
+      (function () {
+        var pref = 'dark';
+        try { pref = localStorage.getItem('icepick-theme') || 'dark'; } catch (e) {}
+        var light = pref === 'light' ||
+          (pref === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+        document.documentElement.dataset.theme = light ? 'light' : 'dark';
+      })();
+
+      // Every color the app uses reads a CSS variable, so switching theme is a
+      // change of variables on <html> rather than of classes in every view.
+      // Only the shades the app actually uses are wired; the rest keep
+      // Tailwind's defaults.
+      var themed = function (family, shades) {
+        var out = {};
+        shades.forEach(function (s) { out[s] = 'rgb(var(--c-' + family + '-' + s + ') / <alpha-value>)'; });
+        return out;
+      };
       tailwind.config = {
         theme: {
           extend: {
@@ -15,18 +35,19 @@
               display: ['Teko', 'sans-serif'],
             },
             colors: {
-              ice: {
-                50: '#f0f9ff',
-                100: '#e0f2fe',
-                200: '#bae6fd',
-                300: '#7dd3fc',
-                400: '#38bdf8',
-                500: '#0ea5e9',
-                600: '#0284c7',
-                700: '#0369a1',
-                800: '#075985',
-                900: '#0c4a6e',
-              },
+              // `white` is the primary text color, so it goes dark in light mode.
+              // Text on a filled accent button uses `onaccent`, which never flips.
+              white: 'rgb(var(--c-white) / <alpha-value>)',
+              onaccent: 'rgb(255 255 255 / <alpha-value>)',
+              slate: themed('slate', [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]),
+              ice: themed('ice', [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]),
+              red: themed('red', [100, 200, 300, 400, 500, 600, 900]),
+              green: themed('green', [300, 400, 500, 900]),
+              blue: themed('blue', [300, 500, 900]),
+              yellow: themed('yellow', [300, 500, 900]),
+              purple: themed('purple', [300, 900]),
+              orange: themed('orange', [500]),
+              amber: themed('amber', [400]),
               puck: '#1e293b',
             }
           }
@@ -34,23 +55,76 @@
       }
     </script>
     <style>
+      /* Dark (default): Tailwind's own values, so the dark app is unchanged. */
+      :root {
+        color-scheme: dark;
+        --c-white: 255 255 255;
+        --c-slate-50: 248 250 252;  --c-slate-100: 241 245 249; --c-slate-200: 226 232 240;
+        --c-slate-300: 203 213 225; --c-slate-400: 148 163 184; --c-slate-500: 100 116 139;
+        --c-slate-600: 71 85 105;   --c-slate-700: 51 65 85;    --c-slate-800: 30 41 59;
+        --c-slate-900: 15 23 42;    --c-slate-950: 2 6 23;
+        --c-ice-50: 240 249 255;  --c-ice-100: 224 242 254; --c-ice-200: 186 230 253;
+        --c-ice-300: 125 211 252; --c-ice-400: 56 189 248;  --c-ice-500: 14 165 233;
+        --c-ice-600: 2 132 199;   --c-ice-700: 3 105 161;   --c-ice-800: 7 89 133;
+        --c-ice-900: 12 74 110;
+        --c-red-100: 254 226 226; --c-red-200: 254 202 202; --c-red-300: 252 165 165;
+        --c-red-400: 248 113 113; --c-red-500: 239 68 68;   --c-red-600: 220 38 38;
+        --c-red-900: 127 29 29;
+        --c-green-300: 134 239 172; --c-green-400: 74 222 128; --c-green-500: 34 197 94;
+        --c-green-900: 20 83 45;
+        --c-blue-300: 147 197 253; --c-blue-500: 59 130 246; --c-blue-900: 30 58 138;
+        --c-yellow-300: 253 224 71; --c-yellow-500: 234 179 8; --c-yellow-900: 113 63 18;
+        --c-purple-300: 216 180 254; --c-purple-900: 88 28 135;
+        --c-orange-500: 249 115 22;
+        --c-amber-400: 251 191 36;
+      }
+
+      /* Light: a fresh sheet. Pale blue-white ice for the page, white boards
+         for cards, jersey navy for text, blue-line blue for accents and
+         goal-light red for losses and errors. Each shade keeps the *role* it
+         has in dark mode (slate-900 is a card, slate-400 is secondary text,
+         ice-400 is accent text, ice-600 is a filled button), so the views
+         need no light-specific classes. */
+      :root[data-theme="light"] {
+        color-scheme: light;
+        --c-white: 11 29 51;
+        --c-slate-50: 10 22 36;     --c-slate-100: 17 29 46;    --c-slate-200: 26 42 63;
+        --c-slate-300: 42 58 80;    --c-slate-400: 63 80 104;   --c-slate-500: 90 108 130;
+        --c-slate-600: 127 146 168; --c-slate-700: 194 207 220; --c-slate-800: 220 229 238;
+        --c-slate-900: 255 255 255; --c-slate-950: 234 241 247;
+        --c-ice-50: 6 40 77;      --c-ice-100: 7 48 92;     --c-ice-200: 8 58 110;
+        --c-ice-300: 10 74 140;   --c-ice-400: 11 92 173;   --c-ice-500: 22 104 187;
+        --c-ice-600: 13 90 167;   --c-ice-700: 10 74 140;   --c-ice-800: 141 187 232;
+        --c-ice-900: 179 211 241;
+        --c-red-100: 92 10 20;    --c-red-200: 122 14 28;   --c-red-300: 150 16 36;
+        --c-red-400: 176 13 40;   --c-red-500: 212 42 69;   --c-red-600: 200 16 46;
+        --c-red-900: 248 200 208;
+        --c-green-300: 14 99 52;  --c-green-400: 18 112 54; --c-green-500: 22 163 74;
+        --c-green-900: 196 234 210;
+        --c-blue-300: 29 78 216;  --c-blue-500: 59 130 246; --c-blue-900: 191 211 251;
+        --c-yellow-300: 133 77 14; --c-yellow-500: 161 98 7; --c-yellow-900: 245 220 140;
+        --c-purple-300: 107 33 168; --c-purple-900: 220 200 245;
+        --c-orange-500: 194 65 12;
+        --c-amber-400: 180 83 9;
+      }
+
       body {
-        background-color: #0f172a;
-        color: #f8fafc;
+        background-color: rgb(var(--c-slate-900));
+        color: rgb(var(--c-slate-50));
       }
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #1e293b;
+        background: rgb(var(--c-slate-800));
       }
       ::-webkit-scrollbar-thumb {
-        background: #38bdf8;
+        background: rgb(var(--c-ice-400));
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #0ea5e9;
+        background: rgb(var(--c-ice-500));
       }
     </style>
   <!-- importmap removed - Vite handles module resolution in dev/build -->

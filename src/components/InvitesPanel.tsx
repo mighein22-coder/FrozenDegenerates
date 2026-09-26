@@ -203,7 +203,7 @@ export const InvitesPanel: React.FC = () => {
         <button
           type="submit"
           disabled={minting}
-          className="px-4 py-2 bg-ice-600 hover:bg-ice-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+          className="px-4 py-2 bg-ice-600 hover:bg-ice-700 disabled:opacity-50 text-onaccent rounded-lg text-sm font-medium transition-colors"
         >
           {minting ? 'Minting...' : 'Mint invite code'}
         </button>

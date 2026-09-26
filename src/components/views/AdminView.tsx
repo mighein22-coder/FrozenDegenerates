@@ -101,7 +101,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ allWeeks, leagueUsers }) =
           <button
             onClick={handleSyncWeek}
             disabled={syncStatus === 'LOADING'}
-            className="w-full px-4 py-2 bg-ice-600 hover:bg-ice-700 disabled:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+            className="w-full px-4 py-2 bg-ice-600 hover:bg-ice-700 disabled:bg-slate-700 text-onaccent rounded-lg font-medium transition-colors"
           >
             {syncStatus === 'LOADING' ? 'Syncing...' : 'Sync Scores'}
           </button>

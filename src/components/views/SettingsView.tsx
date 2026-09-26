@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { MemberAvatar } from '../MemberAvatar';
-import { User as UserIcon, KeyRound, Mail } from 'lucide-react';
+import { User as UserIcon, KeyRound, Mail, Palette, Moon, Sun, Monitor } from 'lucide-react';
 import { Button } from '../Button';
 import { supabase, type Profile } from '../../lib/supabase';
 import { supabaseService } from '../../lib/supabaseService';
+import { getThemePreference, setThemePreference, type ThemePreference } from '../../lib/theme';
 
 interface SettingsViewProps {
   userId: string;
@@ -16,10 +17,19 @@ const inputClass =
 
 const MIN_PASSWORD_LENGTH = 8;
 
+const THEME_OPTIONS: { value: ThemePreference; label: string; icon: typeof Moon }[] = [
+  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'system', label: 'System', icon: Monitor }
+];
+
 /**
  * Settings view — lets a member manage their own display name, avatar and
  * password. Email is read-only: changing it requires a confirmation flow plus
  * a sync back into `profiles`, so it stays an admin task for now.
+ *
+ * Appearance is saved in this browser only (see lib/theme.ts) and applies the
+ * moment it is picked, so it has no Save button.
  */
 export const SettingsView: React.FC<SettingsViewProps> = ({ userId, profile, onProfileUpdated }) => {
   // Profile form
@@ -36,6 +46,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ userId, profile, onP
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordMessage, setPasswordMessage] = useState('');
+
+  // Appearance
+  const [themePreference, setThemePreferenceState] = useState<ThemePreference>(getThemePreference);
+
+  const handleThemeChange = (preference: ThemePreference) => {
+    setThemePreference(preference);
+    setThemePreferenceState(preference);
+  };
 
   // Seed the form once the profile arrives (it may load after first render)
   useEffect(() => {
@@ -124,7 +142,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ userId, profile, onP
         <h1 className="font-display text-3xl lg:text-4xl font-bold text-white uppercase tracking-wide">
           Account Settings
         </h1>
-        <p className="text-slate-400 mt-1">Manage how you appear in the league and secure your account.</p>
+        <p className="text-slate-400 mt-1">Manage how you appear in the league, how the app looks, and secure your account.</p>
       </div>
 
       {/* Profile */}
@@ -201,6 +219,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ userId, profile, onP
             {profileSaving ? 'Saving...' : 'Save Profile'}
           </Button>
         </form>
+      </section>
+
+      {/* Appearance */}
+      <section className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <Palette size={20} className="text-ice-400" />
+          <h2 className="font-display text-xl font-bold text-white uppercase tracking-wide">Appearance</h2>
+        </div>
+
+        <div role="radiogroup" aria-label="Color theme" className="grid grid-cols-3 gap-3">
+          {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
+            const selected = themePreference === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => handleThemeChange(value)}
+                className={`flex flex-col items-center gap-2 rounded-lg border px-3 py-4 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ice-500 ${
+                  selected
+                    ? 'bg-ice-500/10 border-ice-500 text-ice-400'
+                    : 'bg-slate-950/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white'
+                }`}
+              >
+                <Icon size={20} className={selected ? 'stroke-[2.5]' : ''} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-slate-500">
+          Dark is the default. System follows your device's setting. Saved on this device only.
+        </p>
       </section>
 
       {/* Password */}
