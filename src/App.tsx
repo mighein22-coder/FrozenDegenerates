@@ -6,6 +6,7 @@ import { isAuthCallback } from './lib/authRedirect';
 import { getTimeUntilDeadline, arePicksLocked } from './lib/timezone';
 import { computeStandings } from './lib/standings';
 import { getSegments, getCurrentSegment } from './lib/segments';
+import { hasUnsavedPickChanges } from './lib/picks';
 import type { Week, Game, Pick } from './types';
 import type { Profile } from './lib/supabase';
 
@@ -66,6 +67,9 @@ function App() {
   const [allWeeks, setAllWeeks] = useState<Week[]>([]);
   const [weekGames, setWeekGames] = useState<Game[]>([]);
   const [currentPicks, setCurrentPicks] = useState<Partial<Pick>[]>([]);
+  // The sheet as last loaded from or saved to the database — the baseline the
+  // Picks screen compares its working copy against to know what is unsaved.
+  const [savedPicks, setSavedPicks] = useState<Pick[]>([]);
   const [leagueProfiles, setLeagueProfiles] = useState<Profile[]>([]);
 
   // Raw standings inputs, fetched once. The season table and each segment's
@@ -210,6 +214,7 @@ function App() {
       try {
         const picks = await supabaseService.getUserPicks(user.id, currentWeek.id);
         setCurrentPicks(picks);
+        setSavedPicks(picks);
       } catch (error) {
         console.error('Error loading picks:', error);
       }
@@ -399,7 +404,7 @@ function App() {
   };
 
   const handleSubmitPicks = async () => {
-    if (!user || !currentWeek || !isPickSheetValid) return;
+    if (!user || !currentWeek || !isPickSheetValid || !hasUnsavedChanges) return;
 
     try {
       setSaveStatus('SAVING');
@@ -420,6 +425,7 @@ function App() {
         supabaseService.getStandingsInputs()
       ]);
       setCurrentPicks(picks);
+      setSavedPicks(picks);
       setAllPicks(inputs.picks);
 
       // Reset status after 2 seconds
@@ -439,6 +445,7 @@ function App() {
       setCurrentWeek(null);
       setWeekGames([]);
       setCurrentPicks([]);
+      setSavedPicks([]);
       setResultsWeekGames([]);
       setResultsWeekPicks([]);
       setTeamStatsPicks([]);
@@ -543,6 +550,11 @@ function App() {
     const confidences = new Set(currentPicks.map(p => p.confidence));
     return [1, 2, 3, 4, 5].every(v => confidences.has(v));
   }, [currentPicks]);
+
+  const hasUnsavedChanges = useMemo(
+    () => hasUnsavedPickChanges(currentPicks, savedPicks),
+    [currentPicks, savedPicks]
+  );
 
   // isLocked for selected results week (not the current picks week)
   const isResultsWeekLocked = useMemo(() => {
@@ -707,6 +719,8 @@ function App() {
                   handleSetConfidence={handleSetConfidence}
                   handleSubmitPicks={handleSubmitPicks}
                   isPickSheetValid={isPickSheetValid}
+                  hasUnsavedChanges={hasUnsavedChanges}
+                  hasSavedSheet={savedPicks.length > 0}
                   loadingSchedule={loadingSchedule}
                   sourceUrl={sourceUrl}
                 />

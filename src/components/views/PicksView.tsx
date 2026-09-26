@@ -16,6 +16,10 @@ interface PicksViewProps {
   handleSetConfidence: (gameId: string, val: number) => void;
   handleSubmitPicks: () => void;
   isPickSheetValid: boolean;
+  /** The sheet differs from what was last saved. */
+  hasUnsavedChanges: boolean;
+  /** A sheet for this week is already in the database. */
+  hasSavedSheet: boolean;
   loadingSchedule: boolean;
   sourceUrl?: string;
 }
@@ -35,6 +39,8 @@ export const PicksView: React.FC<PicksViewProps> = ({
   handleSetConfidence,
   handleSubmitPicks,
   isPickSheetValid,
+  hasUnsavedChanges,
+  hasSavedSheet,
   loadingSchedule,
   sourceUrl
 }) => {
@@ -48,6 +54,22 @@ export const PicksView: React.FC<PicksViewProps> = ({
   }, []);
 
   const usedConfidences = currentPicks.map(p => p.confidence || 0).filter(c => c > 0);
+
+  // Submitting is only worth doing for a complete sheet that says something the
+  // saved one does not.
+  const canSubmit =
+    isPickSheetValid &&
+    hasUnsavedChanges &&
+    saveStatus !== 'SAVING' &&
+    saveStatus !== 'SAVED' &&
+    !loadingSchedule;
+
+  const submitLabel =
+    saveStatus === 'SAVING' ? 'Saving...'
+    : saveStatus === 'SAVED' ? 'Updated!'
+    : hasSavedSheet && !hasUnsavedChanges ? 'Picks Saved'
+    : 'Submit Picks';
+
   const targetDateStr = selectedWeekId.replace('week-', '');
 
   // Parse date string at noon UTC to avoid timezone offset issues
@@ -96,10 +118,10 @@ export const PicksView: React.FC<PicksViewProps> = ({
           ) : (
             <Button
               onClick={handleSubmitPicks}
-              disabled={!isPickSheetValid || saveStatus === 'SAVED' || loadingSchedule}
-              variant={isPickSheetValid ? 'primary' : 'secondary'}
+              disabled={!canSubmit}
+              variant={canSubmit ? 'primary' : 'secondary'}
             >
-              {saveStatus === 'SAVING' ? 'Saving...' : saveStatus === 'SAVED' ? 'Updated!' : 'Submit Picks'}
+              {submitLabel}
             </Button>
           )}
         </div>
