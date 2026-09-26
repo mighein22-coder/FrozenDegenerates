@@ -143,6 +143,15 @@ Operational detail lives in `docs/OPERATIONS.md`.
       the URL fragment.
 - [x] Profile / account settings — name, avatar, password. Landed on `main`
       separately while this work was in review, not part of this branch.
+- [x] **Light mode** (issue #33). Settings → Appearance offers Dark (default),
+      Light and System. Saved per browser in localStorage, not per account, so
+      it applies on the login screen and needed no migration. Every Tailwind
+      color the app uses now reads a CSS variable set in `index.html`; light
+      mode swaps the variables, so no view carries light-specific classes.
+      Each shade keeps its dark-mode role (slate-900 = card, slate-400 =
+      secondary text, ice-600 = filled button). `text-white` is primary text
+      and flips to navy; text on a filled accent button is `text-onaccent`,
+      which never flips — use that for any new filled button.
 
 ---
 

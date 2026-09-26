@@ -64,7 +64,7 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
             title={tab.hint}
             className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
               isActive
-                ? 'bg-ice-600 border-ice-500 text-white'
+                ? 'bg-ice-600 border-ice-500 text-onaccent'
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
             }`}
           >

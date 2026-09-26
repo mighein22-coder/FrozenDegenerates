@@ -158,7 +158,7 @@ export const GameCard: React.FC<GameCardProps> = ({
                             className={`
                                 h-7 flex-1 rounded text-xs font-bold transition-all duration-200
                                 ${isActive 
-                                    ? 'bg-ice-500 text-white shadow-sm' 
+                                    ? 'bg-ice-500 text-onaccent shadow-sm' 
                                     : isUsed 
                                         ? 'bg-slate-800/50 text-slate-700 cursor-not-allowed border border-transparent' 
                                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
