@@ -152,6 +152,14 @@ Operational detail lives in `docs/OPERATIONS.md`.
       secondary text, ice-600 = filled button). `text-white` is primary text
       and flips to navy; text on a filled accent button is `text-onaccent`,
       which never flips — use that for any new filled button.
+- [x] **Dashboard redesign** (issue #32), modelled on the DegenNFL dashboard.
+      Your saved picks for the week, most confident first, each with the game's
+      state and what it earned, beside a deadline panel (countdown, then games
+      final once locked). Below that is the top 5 of the *current segment*, the
+      same scope the Standings screen opens on, with your own row appended if
+      you're outside it. The old stat cards are gone. Returning to the
+      dashboard refetches picks and games, so scheduled-sync results show up
+      without a reload. Pure helpers in `src/lib/dashboard.ts`, 9 tests.
 
 ---
 
