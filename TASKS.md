@@ -143,6 +143,14 @@ Operational detail lives in `docs/OPERATIONS.md`.
       the URL fragment.
 - [x] Profile / account settings — name, avatar, password. Landed on `main`
       separately while this work was in review, not part of this branch.
+- [x] **Dashboard redesign** (issue #32), modelled on the DegenNFL dashboard.
+      Your saved picks for the week, most confident first, each with the game's
+      state and what it earned, beside a deadline panel (countdown, then games
+      final once locked). Below that is the top 5 of the *current segment*, the
+      same scope the Standings screen opens on, with your own row appended if
+      you're outside it. The old stat cards are gone. Returning to the
+      dashboard refetches picks and games, so scheduled-sync results show up
+      without a reload. Pure helpers in `src/lib/dashboard.ts`, 9 tests.
 
 ---
 
