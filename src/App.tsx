@@ -224,7 +224,7 @@ function App() {
       // Always show completed weeks
       if (week.status === 'COMPLETED') return true;
 
-      // For open/locked weeks, only show if past deadline (Saturday 10 AM ET)
+      // For open/locked weeks, only show if past deadline (Saturday noon ET)
       if (week.status === 'OPEN' || week.status === 'LOCKED') {
         return arePicksLocked(week.startDate);
       }

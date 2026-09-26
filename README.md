@@ -17,7 +17,7 @@ standings — so a slow start doesn't put the rest of the year out of reach.
 |---|---|
 | Monday 6:00 AM | The week rolls over to the coming Saturday; the app fetches that day's NHL schedule |
 | Through the week | Members pick five games and assign confidence 1–5, no duplicates |
-| **Saturday 10:00 AM** | Picks lock, and the league's selections become visible |
+| **Saturday 12:00 PM (noon)** | Picks lock, and the league's selections become visible |
 | Saturday evening | Games play; a scheduled job syncs scores from the NHL API every 15 minutes |
 | Sunday 4:00 AM | The week closes and results are final |
 

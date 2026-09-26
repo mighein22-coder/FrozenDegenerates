@@ -14,10 +14,10 @@ Operational detail lives in `docs/OPERATIONS.md`.
       against the production database a week before it counts, using the 14
       preseason games on 9/26. No code change needed — the schedule fetch and
       the scoring pass don't filter by game type.
-      - Before 10:00 AM ET Saturday: log in (the first login seeds
+      - Before noon ET Saturday: log in (the first login seeds
         `week-2026-09-26` and its games) and submit a sheet; a second account
         also tests that picks are hidden until the deadline.
-      - 10:00 AM ET: picks lock and become visible in the League Matrix.
+      - Noon ET: picks lock and become visible in the League Matrix.
       - From ~5:30 PM ET: `scheduled-sync` should score finals with nobody
         signed in (Netlify → Logs → Functions → `scheduled-sync`). Run the
         mismatch query below; it should return zero rows.
@@ -260,7 +260,7 @@ Operational detail lives in `docs/OPERATIONS.md`.
       Running flat every 15 minutes rather than pinning a Saturday-night window
       is deliberate: Netlify cron is UTC, the window is Eastern, and a padded
       UTC window is an edge that goes wrong twice a season. `getWeeksToSync`
-      returns nothing outside Saturday 10:00 AM → Sunday 4:00 AM ET, so an
+      returns nothing outside Saturday noon → Sunday 4:00 AM ET, so an
       idle run is one SELECT.
 
       The on-login / results-view sync is **kept**, as the fallback for a

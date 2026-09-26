@@ -13,7 +13,7 @@ import type { Segment } from '../types';
  *
  * Everything in here is pure and date-only. Dates are plain `YYYY-MM-DD`
  * strings parsed at UTC noon, which keeps them clear of any timezone boundary;
- * these are calendar dates, not instants. The Saturday 10:00 ET deadline is a
+ * these are calendar dates, not instants. The Saturday noon ET deadline is a
  * separate concern and lives in `timezone.ts`.
  */
 

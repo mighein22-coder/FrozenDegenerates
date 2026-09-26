@@ -30,13 +30,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         heading: hasFullSheet ? 'Picks Locked In' : 'Week Locked',
         body: hasFullSheet
           ? 'The deadline has passed and your picks are in. Follow the games as results come in.'
-          : "The Saturday 10:00 AM ET deadline has passed, so this week's sheet is closed.",
+          : "The Saturday noon ET deadline has passed, so this week's sheet is closed.",
         button: 'View Picks'
       }
     : hasFullSheet
       ? {
           heading: 'Picks Submitted',
-          body: 'All five selections are in. You can still change them until Saturday at 10:00 AM ET.',
+          body: 'All five selections are in. You can still change them until Saturday at noon ET.',
           button: 'Edit Picks'
         }
       : {

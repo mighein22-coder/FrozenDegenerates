@@ -21,7 +21,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0000_baseline.sql` | — n/a | The pre-`0001` schema, captured from production 2026-09-14. **Never applied to production** — production already has this history. It exists so a throwaway database can be given the same starting point |
 | `0001_lock_profile_privileged_columns.sql` | ☑ applied 2026-08-21 | Stops a member from promoting themselves to `admin` by editing their own `profiles` row |
 | `0002_allow_signup_profile_insert.sql` | ☑ applied 2026-08-21 | Lets a new user create their own `profiles` row at signup, without being able to set `role` |
-| `0003_pick_visibility.sql` | ☑ applied 2026-08-22 | Hides other players' picks until the week's Saturday 10:00 ET deadline passes |
+| `0003_pick_visibility.sql` | ☑ applied 2026-08-22 | Hides other players' picks until the week's Saturday deadline passes (10:00 ET here; noon ET since `0011`) |
 | `0004_enforce_deadline.sql` | ☑ applied 2026-08-22, found missing 2026-09-14, **re-applied 2026-09-21** | Enforces that deadline for writes too, so picks cannot be changed after games start. Went missing between August and September; see ASSESSMENT.md #27 |
 | `0005_save_picks_rpc.sql` | ☑ applied 2026-08-23 | Replaces a pick sheet in one transaction, so a failed save can no longer lose the old picks |
 | `0006_lock_pick_score_columns.sql` | ☑ applied 2026-08-23 | Stops a member writing their own `points_earned`/`result` — the columns the standings are summed from |
@@ -29,6 +29,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0008_lock_week_deadline_writes.sql` | ☑ applied 2026-08-23 | Stops a member moving `weeks.saturday_date` — the column every deadline rule reads |
 | `0009_invites_and_membership.sql` | ☑ applied (date not recorded) | Self-serve signup gated by invite codes. Supersedes 0002: a `profiles` row can no longer be self-inserted, only created by `redeem_invite()` |
 | `0010_fix_save_picks_game_id_cast.sql` | ☑ applied 2026-09-22 | Adds the `::uuid` cast `0005` omitted. Without it `save_picks` raised on every call and no member could submit a sheet. Verified by submitting one from the Picks view. See ASSESSMENT.md #28 |
+| `0011_noon_deadline.sql` | ☐ pending | Moves the pick deadline from Saturday 10:00 to 12:00 ET by redefining `picks_revealed()`. Ships with the client change in `src/lib/timezone.ts`; apply it with that deploy so the UI and database lock together |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends
@@ -123,7 +124,7 @@ Repeat after the Saturday deadline and confirm the whole league appears.
 
 ### Timing
 
-Apply on a weekday. Never between Friday evening and the Saturday 10:00 ET
+Apply on a weekday. Never between Friday evening and the Saturday noon ET
 deadline — if something is wrong, that is the one window where it stops people
 using the pool.
 

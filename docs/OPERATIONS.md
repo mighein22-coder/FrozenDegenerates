@@ -72,7 +72,7 @@ install both trees.
 |---|---|
 | Monday 6:00 AM | `getTargetSaturdayDate()` rolls over to the coming Saturday. The next member to log in creates the `weeks` row and the app fetches that Saturday's games. |
 | Through the week | Members submit five picks with unique confidence 1–5. |
-| **Saturday 10:00 AM** | Pick deadline. Picks lock and, once `0003` is applied, everyone's picks become visible to everyone. |
+| **Saturday 12:00 PM (noon)** | Pick deadline. Picks lock and, once `0003` is applied, everyone's picks become visible to everyone. |
 | Saturday evening | Games play. `scheduled-sync` picks up finals and resolves picks within 15 minutes, with no one signed in. |
 | Sunday 4:00 AM | The week is marked COMPLETED, whether or not every game went final. The first scheduled run after 4:00 AM does it. |
 
@@ -100,7 +100,7 @@ nothing to forge, because there is no request. **Do not add a secret to make the
 HTTP path work for cron.**
 
 **Every 15 minutes is cheaper than it looks.** The function first asks which
-weeks are past their Saturday 10:00 AM ET deadline and not yet COMPLETED. From
+weeks are past their Saturday noon ET deadline and not yet COMPLETED. From
 Sunday morning to Saturday morning that is empty, and the run ends after one
 SELECT — no NHL API call, no writes. Roughly 2,900 invocations a month against a
 125,000 free-tier allowance.
@@ -234,7 +234,7 @@ See `supabase/README.md`. Short version: paste the file into the Supabase SQL
 editor and run it. Every file is written to be re-runnable. Record what you
 applied and when in the log below.
 
-**Never apply a migration between Friday evening and the Saturday 10:00 AM
+**Never apply a migration between Friday evening and the Saturday noon
 deadline.** That is the one window where a mistake stops people using the pool.
 
 ### Applied migrations
