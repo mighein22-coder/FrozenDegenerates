@@ -218,11 +218,15 @@ function App() {
     loadPicks();
   }, [user, currentWeek]);
 
-  // Available weeks for Results view - only completed weeks + current week if past deadline
+  // Available weeks for Results view - completed weeks, weeks past their
+  // deadline, and the current week (before its deadline the matrix shows only
+  // the viewer's own picks)
   const availableResultsWeeks = useMemo(() => {
     return allWeeks.filter(week => {
       // Always show completed weeks
       if (week.status === 'COMPLETED') return true;
+
+      if (week.id === currentWeek?.id) return true;
 
       // For open/locked weeks, only show if past deadline (Saturday noon ET)
       if (week.status === 'OPEN' || week.status === 'LOCKED') {
@@ -231,7 +235,7 @@ function App() {
 
       return false;
     });
-  }, [allWeeks]);
+  }, [allWeeks, currentWeek]);
 
   // Which week the matrix shows: ?week= when it names a viewable week, else the
   // most recent. Validating against the list means a stale or hand-edited link
@@ -239,7 +243,12 @@ function App() {
   const selectedResultsWeekId = useMemo(() => {
     const requested = searchParams.get('week');
     if (requested && availableResultsWeeks.some(w => w.id === requested)) return requested;
-    return availableResultsWeeks[0]?.id ?? '';
+    // Default to the latest week with results to show; fall back to the open
+    // week only when there is nothing else (e.g. the first week of the season).
+    const latestRevealed = availableResultsWeeks.find(
+      w => w.status === 'COMPLETED' || arePicksLocked(w.startDate)
+    );
+    return (latestRevealed ?? availableResultsWeeks[0])?.id ?? '';
   }, [searchParams, availableResultsWeeks]);
 
   const setSelectedResultsWeekId = (weekId: string) => setParam('week', weekId);
@@ -256,10 +265,12 @@ function App() {
       try {
         // A COMPLETED week is fully resolved — syncing it can't change anything,
         // so skip the Netlify round-trip entirely.
-        const isCompleted =
-          allWeeks.find(w => w.id === selectedResultsWeekId)?.status === 'COMPLETED';
+        // Before the deadline there is nothing to score either.
+        const selected = allWeeks.find(w => w.id === selectedResultsWeekId);
+        const needsSync =
+          !!selected && selected.status !== 'COMPLETED' && arePicksLocked(selected.startDate);
 
-        if (!isCompleted) {
+        if (needsSync) {
           setSyncingScores(true);
           await supabaseService.syncScores(selectedResultsWeekId);
           setSyncingScores(false);
@@ -686,6 +697,7 @@ function App() {
                 weekGames={resultsWeekGames}
                 leagueUsers={leagueUsers}
                 leaguePicks={resultsWeekPicks}
+                currentUserId={user?.id}
                 syncingScores={syncingScores}
               />
             }

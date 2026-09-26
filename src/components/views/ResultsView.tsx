@@ -11,6 +11,7 @@ interface ResultsViewProps {
   weekGames: Game[];
   leagueUsers: User[];
   leaguePicks: Pick[];
+  currentUserId?: string;
   syncingScores?: boolean;
 }
 
@@ -23,9 +24,16 @@ type CellState =
  * What to show for one player's pick on one game.
  *
  * Shared by the desktop matrix and the mobile card list so the two can never
- * disagree about whether a pick is revealed.
+ * disagree about whether a pick is revealed. The viewer's own picks are always
+ * shown — the database (0003) lets a member read their own picks before the
+ * deadline, and hiding them from their owner protects nothing.
  */
-function cellState(game: Game, pick: Pick | undefined, isLocked: boolean): CellState {
+function cellState(
+  game: Game,
+  pick: Pick | undefined,
+  isLocked: boolean,
+  isOwn: boolean
+): CellState {
   if (game.status === 'FINAL') {
     if (!pick) return { kind: 'none' };
     const isWin =
@@ -39,7 +47,7 @@ function cellState(game: Game, pick: Pick | undefined, isLocked: boolean): CellS
   }
 
   // Game unfinished and the deadline hasn't passed — picks stay concealed
-  if (!isLocked) return { kind: 'hidden' };
+  if (!isLocked && !isOwn) return { kind: 'hidden' };
 
   if (!pick) return { kind: 'none' };
   return { kind: 'pending', teamId: pick.selectedTeamId, confidence: pick.confidence };
@@ -62,6 +70,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   weekGames,
   leagueUsers,
   leaguePicks,
+  currentUserId,
   syncingScores = false
 }) => {
   // Handle case where no weeks are available yet
@@ -162,7 +171,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
               <ul className="divide-y divide-slate-800/70">
                 {sortedGames.map(game => {
                   const pick = leaguePicks.find(p => p.userId === user.id && p.gameId === game.id);
-                  const state = cellState(game, pick, isLocked);
+                  const state = cellState(game, pick, isLocked, user.id === currentUserId);
 
                   return (
                     <li key={game.id} className="flex items-center justify-between gap-3 px-3 py-2">
@@ -237,7 +246,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                   </td>
                   {weekGames.map(game => {
                     const pick = leaguePicks.find(p => p.userId === user.id && p.gameId === game.id);
-                    const state = cellState(game, pick, isLocked);
+                    const state = cellState(game, pick, isLocked, user.id === currentUserId);
                     const cellClass = 'p-2 md:p-3 text-center border-l border-slate-800/50';
 
                     if (state.kind === 'none') {
