@@ -53,7 +53,7 @@ Operational detail lives in `docs/OPERATIONS.md`.
       delete from weeks where id    = 'week-2026-09-26';
       ```
 
-- [ ] **Watch the first live Saturday (2026-10-03).** The scheduled sync has
+- [ ] **Watch the first live Saturday (2026-10-10).** The scheduled sync has
       never run against a real played week — the season had not started when it
       landed. Check Netlify → Logs → Functions → `scheduled-sync` that evening:
       idle runs should say `No weeks need syncing`, and runs after the first
@@ -297,7 +297,7 @@ Operational detail lives in `docs/OPERATIONS.md`.
       closed, an already-settled pick was left alone, and a second run was a
       no-op. 18 unit tests cover `getWeeksToSync` across both DST sides.
       Not yet observed against a real played week — the season opens
-      2026-10-03.
+      2026-10-10 (the 10/3 opening Saturday is outside the segments; no picks).
 - [x] Self-serve signup gated by invites. `0009_invites_and_membership.sql`
       plus a signup mode on `LoginView`, `RedeemInviteView`, and an Invites
       section in the Admin Panel. **This was a security fix too**: the pool was

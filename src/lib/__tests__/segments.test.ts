@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  clampToSeasonSaturday,
   getSeasonSaturdays,
   getSegments,
   getSegmentForDate,
@@ -118,5 +119,20 @@ describe('getCurrentSegment', () => {
   it('falls into the right segment mid-gap between two segments', () => {
     // A Wednesday between seg 1's last Saturday and seg 2's first
     expect(getCurrentSegment('2026-12-09')?.number).toBe(1);
+  });
+});
+
+describe('clampToSeasonSaturday', () => {
+  it('never lands outside the season Saturdays', () => {
+    // Opening Saturday 10/3 is outside the segments: the week is 10/10
+    expect(clampToSeasonSaturday('2026-10-03')).toEqual({ saturday: '2026-10-10', weekNumber: 1 });
+    expect(clampToSeasonSaturday('2026-09-26')).toEqual({ saturday: '2026-10-10', weekNumber: 1 });
+    expect(clampToSeasonSaturday('2026-12-12')).toEqual({ saturday: '2026-12-12', weekNumber: 10 });
+    expect(clampToSeasonSaturday('2027-04-10')).toEqual({ saturday: '2027-04-10', weekNumber: 27 });
+    expect(clampToSeasonSaturday('2027-04-17')).toEqual({ saturday: '2027-04-10', weekNumber: 27 });
+  });
+
+  it('returns null for an empty season', () => {
+    expect(clampToSeasonSaturday('2026-10-10', [])).toBeNull();
   });
 });

@@ -135,3 +135,20 @@ export function getCurrentSegment(
     segments[0]
   );
 }
+
+/**
+ * The season Saturday a pick week should use for a target date, and its
+ * 1-based week number. Every pick week lies inside a segment: before the first
+ * season Saturday this returns the first one (so the opening pick week is
+ * offered early), and after the last it stays on the last. Null only when the
+ * configured season contains no Saturdays at all.
+ */
+export function clampToSeasonSaturday(
+  dateStr: string,
+  saturdays: string[] = getSeasonSaturdays()
+): { saturday: string; weekNumber: number } | null {
+  if (saturdays.length === 0) return null;
+  let index = saturdays.findIndex(s => s >= dateStr);
+  if (index === -1) index = saturdays.length - 1;
+  return { saturday: saturdays[index], weekNumber: index + 1 };
+}
