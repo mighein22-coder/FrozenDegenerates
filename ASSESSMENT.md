@@ -363,6 +363,7 @@ Treat the pool's standings as tamperable until 15–18 are closed.
 
 - [x] **16. Tied Players Get Different Ranks (No Tiebreaker)** ✅
   - Sort by points, then wins, then name; competition ranks in `lib/standings.ts`
+  - Since issue #39: points, then wins, then fewest losses, then name
 
 - [x] **17. `sync-scores.ts` Appears to Be Dead Code** ✅
   - Confirmed dead and deleted

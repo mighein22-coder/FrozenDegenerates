@@ -31,6 +31,28 @@ describe('rankStandings', () => {
     expect(ranked.map(r => r.rank)).toEqual([1, 2]);
   });
 
+  it('breaks a points-and-wins tie on fewest losses', () => {
+    // Same 20 points off the same 5 wins, but Bob sat a week out and Ann did
+    // not. Bob is ahead: he gave less away getting there.
+    const ranked = rankStandings(
+      [player('Ann', 20, 5, 5), player('Bob', 20, 5, 0)],
+      'totalPoints'
+    );
+    expect(ranked.map(r => r.name)).toEqual(['Bob', 'Ann']);
+    // The separation reaches the rank too, or the table would show a shared
+    // rank for two rows it just put in an order.
+    expect(ranked.map(r => r.rank)).toEqual([1, 2]);
+  });
+
+  it('puts losses after wins, not before', () => {
+    // Ann has more losses but more wins; wins decide before losses are looked at.
+    const ranked = rankStandings(
+      [player('Bob', 20, 4, 0), player('Ann', 20, 6, 4)],
+      'totalPoints'
+    );
+    expect(ranked.map(r => r.name)).toEqual(['Ann', 'Bob']);
+  });
+
   it('gives genuinely tied players the same rank and skips the next', () => {
     const ranked = rankStandings(
       [player('Ann', 20, 5), player('Bob', 20, 5), player('Cy', 10, 3)],
@@ -39,9 +61,18 @@ describe('rankStandings', () => {
     expect(ranked.map(r => r.rank)).toEqual([1, 1, 3]);
   });
 
+  it('shares a rank only when points, wins and losses all match', () => {
+    const ranked = rankStandings(
+      [player('Cy', 20, 5, 3), player('Ann', 20, 5, 1), player('Bob', 20, 5, 1)],
+      'totalPoints'
+    );
+    expect(ranked.map(r => r.name)).toEqual(['Ann', 'Bob', 'Cy']);
+    expect(ranked.map(r => r.rank)).toEqual([1, 1, 3]);
+  });
+
   it('orders fully tied players by name so the table is stable', () => {
     const ranked = rankStandings(
-      [player('Zoe', 20, 5), player('Ann', 20, 5)],
+      [player('Zoe', 20, 5, 2), player('Ann', 20, 5, 2)],
       'totalPoints'
     );
     expect(ranked.map(r => r.name)).toEqual(['Ann', 'Zoe']);

@@ -29,6 +29,10 @@ function formatRange(segment: Segment): string {
  * Scope is either one segment or the whole season. In a segment scope the rank,
  * record and points column all count only that segment's weeks, while the
  * Season column stays cumulative so nobody loses sight of the overall race.
+ *
+ * Rows render in the order `computeStandings` returned them — points, wins,
+ * fewest losses, name. Do not sort here: the Dashboard's top five and the
+ * League Matrix take the same order from the same function (issue #39).
  */
 export const StandingsView: React.FC<StandingsViewProps> = ({
   standings,
@@ -205,6 +209,14 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
       <p className="text-slate-600 text-xs mt-4">
         Rank, record and points count {active.label} only ({active.weekCount} weeks,{' '}
         {formatRange(active)}). The Season column stays cumulative.
+      </p>
+    )}
+
+    {standings.length > 0 && (
+      <p className="text-slate-600 text-xs mt-2">
+        Ordered by points, then wins, then fewest losses. Members level on all
+        three share a rank, and the next rank skips (1, 2, 2, 4). The Dashboard
+        and the League Matrix list members in this same order.
       </p>
     )}
   </div>

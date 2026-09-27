@@ -6,6 +6,7 @@ import { isAuthCallback } from './lib/authRedirect';
 import { getTimeUntilDeadline, arePicksLocked } from './lib/timezone';
 import { computeStandings } from './lib/standings';
 import { getSegments, getCurrentSegment } from './lib/segments';
+import { parseMatrixOrder, resolveMatrixOrder, type MatrixOrder } from './lib/matrixOrder';
 import { hasUnsavedPickChanges } from './lib/picks';
 import type { Week, Game, Pick } from './types';
 import type { Profile } from './lib/supabase';
@@ -458,11 +459,16 @@ function App() {
     }
   };
 
-  // Standings, derived rather than fetched. The standings view follows the
-  // selected segment; the dashboard follows the current one (below).
-  const seasonStandings = useMemo(
-    () => computeStandings(leagueProfiles, allPicks, { weekId: currentWeek?.id }),
-    [leagueProfiles, allPicks, currentWeek]
+  // Standings, derived rather than fetched, and every list of members — the
+  // Standings table, the Dashboard's top five, the League Matrix — takes its
+  // order from `computeStandings`. None of them sorts for itself (issue #39).
+
+  // The segment the season is in now. It is BOTH the scope the Standings
+  // screen opens on with no ?segment= AND the Dashboard's scope, read from
+  // this one value so the top five there is always the top five here.
+  const currentSegment = useMemo(
+    () => getCurrentSegment(currentWeek?.startDate, segments),
+    [currentWeek, segments]
   );
 
   // Which scope the standings show: ?segment=1|2|3, ?segment=season, or — with
@@ -474,37 +480,51 @@ function App() {
     const asNumber = Number(requested);
     if (requested !== null && segments.some(s => s.number === asNumber)) return asNumber;
 
-    return getCurrentSegment(currentWeek?.startDate, segments)?.number ?? null;
-  }, [searchParams, segments, currentWeek]);
+    return currentSegment?.number ?? null;
+  }, [searchParams, segments, currentSegment]);
 
   const setSelectedSegment = (segment: number | null) =>
     setParam('segment', segment === null ? 'season' : String(segment));
 
   const scopedStandings = useMemo(
     () =>
-      selectedSegment === null
-        ? seasonStandings
-        : computeStandings(leagueProfiles, allPicks, {
-            weekId: currentWeek?.id,
-            segment: selectedSegment
-          }),
-    [selectedSegment, seasonStandings, leagueProfiles, allPicks, currentWeek]
-  );
-
-  // The dashboard's top five: the current segment, which is the scope the
-  // Standings screen opens on with no ?segment= — so the two always agree.
-  const dashboardSegment = useMemo(
-    () => getCurrentSegment(currentWeek?.startDate, segments),
-    [currentWeek, segments]
+      computeStandings(leagueProfiles, allPicks, {
+        weekId: currentWeek?.id,
+        within: selectedSegment === null ? null : { segment: selectedSegment }
+      }),
+    [selectedSegment, leagueProfiles, allPicks, currentWeek]
   );
 
   const dashboardStandings = useMemo(
     () =>
       computeStandings(leagueProfiles, allPicks, {
         weekId: currentWeek?.id,
-        segment: dashboardSegment?.number ?? null
+        within: currentSegment ? { segment: currentSegment.number } : null
       }),
-    [leagueProfiles, allPicks, currentWeek, dashboardSegment]
+    [leagueProfiles, allPicks, currentWeek, currentSegment]
+  );
+
+  // The Matrix's row order: ?order=week|segment|season, scoped off the week in
+  // its selector. Week by default — see lib/matrixOrder.ts.
+  const matrixOrder = useMemo(
+    () =>
+      resolveMatrixOrder(
+        parseMatrixOrder(searchParams.get('order')),
+        selectedResultsWeekId,
+        segments
+      ),
+    [searchParams, selectedResultsWeekId, segments]
+  );
+
+  const setMatrixOrder = (order: MatrixOrder) => setParam('order', order);
+
+  const matrixStandings = useMemo(
+    () =>
+      computeStandings(leagueProfiles, allPicks, {
+        weekId: selectedResultsWeekId || undefined,
+        within: matrixOrder.within
+      }),
+    [leagueProfiles, allPicks, selectedResultsWeekId, matrixOrder]
   );
 
   // The member's saved sheet for this week, with results. Taken from allPicks
@@ -700,7 +720,7 @@ function App() {
                 isLocked={isLocked}
                 timeLeft={timeLeft}
                 standings={dashboardStandings}
-                segment={dashboardSegment}
+                segment={currentSegment}
               />
             }
           />
@@ -768,7 +788,9 @@ function App() {
                 onWeekSelect={setSelectedResultsWeekId}
                 isLocked={isResultsWeekLocked}
                 weekGames={resultsWeekGames}
-                leagueUsers={leagueUsers}
+                standings={matrixStandings}
+                order={matrixOrder}
+                onOrderChange={setMatrixOrder}
                 leaguePicks={resultsWeekPicks}
                 currentUserId={user?.id}
                 syncingScores={syncingScores}

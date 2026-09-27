@@ -2,7 +2,9 @@ import React from 'react';
 import { MemberAvatar } from '../MemberAvatar';
 import { PrintButton } from '../PrintButton';
 import { Lock, ShieldAlert, Clock, RefreshCw } from 'lucide-react';
-import type { Game, User, Pick, Week } from '../../types';
+import { FULL_SEASON_LABEL } from '../../constants';
+import { MATRIX_ORDERS, type MatrixOrder, type ResolvedMatrixOrder } from '../../lib/matrixOrder';
+import type { Game, Pick, StandingsRow, Week } from '../../types';
 
 interface ResultsViewProps {
   selectedWeekId: string;
@@ -10,7 +12,14 @@ interface ResultsViewProps {
   onWeekSelect: (weekId: string) => void;
   isLocked: boolean;
   weekGames: Game[];
-  leagueUsers: User[];
+  /**
+   * One row per member, already in the order to list them — `computeStandings`
+   * over `order`'s scope. Rendered as given; this view never sorts members.
+   */
+  standings: StandingsRow[];
+  /** The scope `standings` was ordered over, as actually applied. */
+  order: ResolvedMatrixOrder;
+  onOrderChange: (order: MatrixOrder) => void;
   leaguePicks: Pick[];
   currentUserId?: string;
   syncingScores?: boolean;
@@ -72,6 +81,15 @@ const TEAM_TEXT_CLASS: Record<'win' | 'loss' | 'pending', string> = {
  * the sticky player column and header (sticky prints misplaced or doubled), and
  * the screen-sized minimum column widths, which would push a full slate off
  * the side of the sheet.
+ *
+ * ROWS ARE IN STANDINGS ORDER (issue #39): points, then wins, then fewest
+ * losses, then name — the rule the Standings screen and the Dashboard's top
+ * five use, because all three come from `computeStandings`. The Order-by pills
+ * change only the SCOPE it is computed over: the selected week (the default,
+ * since the grid is that week's sheets), the segment that week falls in, or
+ * the full season. The Pts column shows the scope's points and W-L, so the
+ * order explains itself. On paper the pills are gone and the subtitle says
+ * the order in words instead.
  */
 export const ResultsView: React.FC<ResultsViewProps> = ({
   selectedWeekId,
@@ -79,7 +97,9 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   onWeekSelect,
   isLocked,
   weekGames,
-  leagueUsers,
+  standings,
+  order,
+  onOrderChange,
   leaguePicks,
   currentUserId,
   syncingScores = false
@@ -113,6 +133,21 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   const targetDateStr = selectedWeekId.replace('week-', '');
   const selectedWeek = availableWeeks.find(week => week.id === selectedWeekId);
 
+  // Kick-off order, sorted once on a copy — the grid header, its rows and the
+  // mobile cards all need the same column order, and the prop is not ours to
+  // reorder in place.
+  const sortedGames = [...weekGames].sort(
+    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+  );
+
+  // Pills are labelled by what they cover, so "Segment 2" against a week 12
+  // grid says which weeks are counted without explaining what a scope is.
+  const orderLabel: Record<MatrixOrder, string> = {
+    week: selectedWeek ? `Week ${selectedWeek.number}` : 'Week',
+    segment: order.segment ? order.segment.label : 'Segment',
+    season: FULL_SEASON_LABEL
+  };
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 print-landscape">
       {/* Header */}
@@ -124,12 +159,53 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
               {/* The week number lives in the selector, which does not print. */}
               {selectedWeek && <span className="hidden print:inline"> · Week {selectedWeek.number}</span>}
             </h2>
-            <p className="text-slate-400 text-sm">Real-time league-wide selections</p>
+            <p className="text-slate-400 text-sm">
+              <span className="print:hidden">Real-time league-wide selections</span>
+              {/* Paper has no pills, so it names the order in words — two
+                  printed grids of one week would otherwise look alike. */}
+              <span className="hidden print:inline">
+                Members in order of {order.order === 'season' ? 'full-season' : orderLabel[order.order]}{' '}
+                points, then wins, then fewest losses.
+              </span>
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3 lg:gap-4">
           <PrintButton label="Print matrix" />
+
+          {/* Order-by pills (issue #39). */}
+          <div className="flex items-center gap-2 print:hidden">
+            <span className="text-xs text-slate-500">Order by</span>
+            <div
+              role="group"
+              aria-label="Order members by"
+              className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900 p-0.5"
+            >
+              {MATRIX_ORDERS.map(value => {
+                const isActive = order.order === value;
+                // Only a preseason week sits in no segment.
+                const unavailable = value === 'segment' && !order.segment;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={isActive}
+                    disabled={unavailable}
+                    onClick={() => onOrderChange(value)}
+                    title={unavailable ? 'This week is outside the season segments' : undefined}
+                    className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                      isActive
+                        ? 'bg-ice-600 text-onaccent'
+                        : 'text-slate-400 enabled:hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed'
+                    }`}
+                  >
+                    {orderLabel[value]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Week Selector - show when there's at least 1 week */}
           {availableWeeks.length >= 1 && (
@@ -172,22 +248,22 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
 
       {/* Mobile: one card per player, since a games-wide table can't be read on a phone */}
       <div className="md:hidden space-y-3 print:!hidden">
-        {leagueUsers.map(user => {
-          const sortedGames = [...weekGames].sort(
-            (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-          );
-
+        {standings.map(row => {
           return (
-            <div key={user.id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div key={row.userId} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
               <div className="flex items-center gap-2 px-3 py-2 bg-slate-950/60 border-b border-slate-800">
-                <MemberAvatar avatar={user.avatar} name={user.name} />
-                <span className="font-medium text-slate-200 truncate">{user.name}</span>
+                <MemberAvatar avatar={row.avatar} name={row.name} />
+                <span className="font-medium text-slate-200 truncate flex-1 min-w-0">{row.name}</span>
+                <span className="shrink-0 text-right whitespace-nowrap">
+                  <span className="font-display font-bold text-white tabular-nums">{row.totalPoints}</span>
+                  <span className="text-xs text-slate-500 tabular-nums"> pts · {row.wins}-{row.losses}</span>
+                </span>
               </div>
 
               <ul className="divide-y divide-slate-800/70">
                 {sortedGames.map(game => {
-                  const pick = leaguePicks.find(p => p.userId === user.id && p.gameId === game.id);
-                  const state = cellState(game, pick, isLocked, user.id === currentUserId);
+                  const pick = leaguePicks.find(p => p.userId === row.userId && p.gameId === game.id);
+                  const state = cellState(game, pick, isLocked, row.userId === currentUserId);
 
                   return (
                     <li key={game.id} className="flex items-center justify-between gap-3 px-3 py-2">
@@ -227,9 +303,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                 <th className="sticky left-0 z-10 bg-slate-950 p-2 md:p-4 border-b border-r border-slate-800 min-w-[90px] md:min-w-[120px] text-xs font-semibold text-slate-500 uppercase tracking-wider print:static print:!p-1 print:!min-w-0">
                   Player
                 </th>
-                {weekGames
-                  .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-                  .map(game => (
+                <th className="p-2 md:p-3 border-b border-r border-slate-800 text-center bg-slate-950 whitespace-nowrap print:!p-1">
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pts</div>
+                  <div className="text-[10px] text-slate-600">{orderLabel[order.order]}</div>
+                </th>
+                {sortedGames.map(game => (
                     <th
                       key={game.id}
                       className="p-2 border-b border-slate-800 text-center min-w-[80px] md:min-w-[120px] bg-slate-900/50 print:!p-1 print:!min-w-0"
@@ -254,15 +332,23 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
-              {leagueUsers.map(user => (
-                <tr key={user.id} className="hover:bg-slate-800/30 break-inside-avoid">
+              {standings.map(row => (
+                <tr key={row.userId} className="hover:bg-slate-800/30 break-inside-avoid">
                   <td className="sticky left-0 z-10 bg-slate-900 p-2 md:p-4 border-r border-slate-800 font-medium text-slate-200 flex items-center gap-3 print:static print:!p-1 print:gap-1 print:text-sm">
-                    <MemberAvatar avatar={user.avatar} name={user.name} />
-                    {user.name}
+                    <MemberAvatar avatar={row.avatar} name={row.name} />
+                    {row.name}
                   </td>
-                  {weekGames.map(game => {
-                    const pick = leaguePicks.find(p => p.userId === user.id && p.gameId === game.id);
-                    const state = cellState(game, pick, isLocked, user.id === currentUserId);
+                  <td className="p-2 md:p-3 text-center border-r border-slate-800 whitespace-nowrap print:!p-1">
+                    <div className="font-display font-bold text-white text-lg tabular-nums print:text-sm">
+                      {row.totalPoints}
+                    </div>
+                    <div className="text-xs text-slate-500 tabular-nums">
+                      {row.wins}-{row.losses}
+                    </div>
+                  </td>
+                  {sortedGames.map(game => {
+                    const pick = leaguePicks.find(p => p.userId === row.userId && p.gameId === game.id);
+                    const state = cellState(game, pick, isLocked, row.userId === currentUserId);
                     const cellClass = 'p-2 md:p-3 text-center border-l border-slate-800/50 print:!p-1';
 
                     if (state.kind === 'none') {
