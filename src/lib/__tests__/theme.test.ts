@@ -68,3 +68,33 @@ describe('watchSystemTheme', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('printInLightTheme', () => {
+  it('prints on the light palette and restores the member\'s theme afterwards', async () => {
+    const listeners: Record<string, () => void> = {};
+    const html = { dataset: {} as Record<string, string> };
+
+    vi.stubGlobal('localStorage', {
+      getItem: () => 'dark',
+      setItem: () => {}
+    });
+    vi.stubGlobal('document', { documentElement: html });
+    vi.stubGlobal('window', {
+      matchMedia: () => ({ matches: false, addEventListener: () => {} }),
+      addEventListener: (type: string, cb: () => void) => { listeners[type] = cb; }
+    });
+
+    const { printInLightTheme, applyTheme } = await import('../theme');
+    applyTheme();
+    printInLightTheme();
+    expect(html.dataset.theme).toBe('dark');
+
+    listeners.beforeprint();
+    expect(html.dataset.theme).toBe('light');
+
+    listeners.afterprint();
+    expect(html.dataset.theme).toBe('dark');
+
+    vi.unstubAllGlobals();
+  });
+});

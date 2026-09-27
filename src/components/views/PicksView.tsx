@@ -3,6 +3,9 @@ import { Lock, Clock, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react'
 import type { Game, Pick } from '../../types';
 import { GameCard } from '../GameCard';
 import { Button } from '../Button';
+import { PrintButton } from '../PrintButton';
+import { usePrintedAt } from '../../hooks/usePrintedAt';
+import { formatETTime } from '../../lib/timezone';
 
 interface PicksViewProps {
   selectedWeekId: string;
@@ -22,10 +25,20 @@ interface PicksViewProps {
   hasSavedSheet: boolean;
   loadingSchedule: boolean;
   sourceUrl?: string;
+  /** Whose sheet this is. Printed — a sheet on paper with no name on it is anonymous. */
+  memberName: string;
 }
 
 /**
  * Picks view - Weekly game selection interface
+ *
+ * ON PAPER this screen is a RECORD OF THE SHEET, not a blank form to fill in by
+ * hand. It prints the whole slate, with the picked side of each game ticked and
+ * its confidence as a number, and a game left alone saying so. The member's name
+ * and the print time head the page, because these come out of a printer in a
+ * stack. And a sheet with unsubmitted changes says so in a banner: the draft
+ * lives in App, so a member can print five picks the pool has never seen, and
+ * paper outlives the tab it came from.
  */
 export const PicksView: React.FC<PicksViewProps> = ({
   selectedWeekId,
@@ -42,8 +55,10 @@ export const PicksView: React.FC<PicksViewProps> = ({
   hasUnsavedChanges,
   hasSavedSheet,
   loadingSchedule,
-  sourceUrl
+  sourceUrl,
+  memberName
 }) => {
+  const printedAt = usePrintedAt();
   const [teamRecords, setTeamRecords] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -77,14 +92,20 @@ export const PicksView: React.FC<PicksViewProps> = ({
   const displayDate = new Date(targetDateStr + 'T12:00:00Z');
 
   return (
-    <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4">
+    <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 print:space-y-3 print:pb-0">
       {/* Header */}
-      <header className="flex flex-col lg:flex-row lg:justify-between lg:items-center sticky top-0 bg-slate-950/90 backdrop-blur-md py-4 z-30 border-b border-slate-800 gap-4 -mx-4 px-4 lg:-mx-10 lg:px-10">
+      <header className="flex flex-col lg:flex-row lg:justify-between lg:items-center sticky top-0 bg-slate-950/90 backdrop-blur-md py-4 z-30 border-b border-slate-800 gap-4 -mx-4 px-4 lg:-mx-10 lg:px-10 print:static print:!flex-row print:!items-end print:!justify-between print:!mx-0 print:!px-0 print:pt-0 print:backdrop-blur-none print:bg-transparent">
         <div className="flex items-center gap-4">
           <div>
             <h2 className="text-2xl font-display font-bold text-white uppercase tracking-wider">
               Saturday, {displayDate.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
             </h2>
+
+            {/* Print only. On screen the signed-in member knows whose sheet
+                this is; a sheet of paper does not. */}
+            <p className="hidden print:block text-sm text-slate-400 mt-1">
+              {memberName} · printed {formatETTime(printedAt, 'EEE MMM d, h:mm a zzz')}
+            </p>
             <div className="flex items-center gap-3 text-slate-400 text-sm mt-1">
               <span className={`flex items-center gap-1 ${isLocked ? 'text-slate-500' : 'text-ice-400'}`}>
                 {isLocked ? <Lock size={14} /> : <Clock size={14} />}
@@ -95,7 +116,7 @@ export const PicksView: React.FC<PicksViewProps> = ({
                   href={sourceUrl}
                   target="_blank"
                   rel="noopener"
-                  className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-ice-400 transition-colors"
+                  className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-ice-400 transition-colors print:hidden"
                 >
                   <ExternalLink size={10} /> Source: NHL.com
                 </a>
@@ -111,8 +132,9 @@ export const PicksView: React.FC<PicksViewProps> = ({
               {currentPicks.length}/5
             </div>
           </div>
+          <PrintButton label="Print sheet" />
           {isLocked ? (
-            <div className="bg-slate-800 px-4 py-2 rounded text-slate-400 font-bold border border-slate-700 flex items-center gap-2">
+            <div className="bg-slate-800 px-4 py-2 rounded text-slate-400 font-bold border border-slate-700 flex items-center gap-2 print:hidden">
               <Lock size={16} /> Locked
             </div>
           ) : (
@@ -120,6 +142,7 @@ export const PicksView: React.FC<PicksViewProps> = ({
               onClick={handleSubmitPicks}
               disabled={!canSubmit}
               variant={canSubmit ? 'primary' : 'secondary'}
+              className="print:hidden"
             >
               {submitLabel}
             </Button>
@@ -144,16 +167,28 @@ export const PicksView: React.FC<PicksViewProps> = ({
             </div>
           )}
 
+          {/* Print only, and the loudest thing on the page when it applies.
+              The sheet on screen differs from what was saved, so this paper
+              would otherwise pass for a sheet the pool has recorded. */}
+          {hasUnsavedChanges && (
+            <p className="hidden print:block break-inside-avoid border-2 border-red-500 rounded-lg p-3 text-sm font-bold text-red-500">
+              These picks have NOT been submitted. This is what was on screen when it
+              was printed, not what the pool has recorded.
+            </p>
+          )}
+
           {/* Validation Warning */}
           {!isPickSheetValid && currentPicks.length > 0 && !isLocked && (
-            <div className="bg-ice-900/20 border border-ice-500/20 rounded-lg p-3 text-sm text-ice-200 flex items-center gap-2">
+            <div className="bg-ice-900/20 border border-ice-500/20 rounded-lg p-3 text-sm text-ice-200 flex items-center gap-2 print:hidden">
               <AlertCircle size={16} />
               <span>Select 5 winners and assign a unique confidence score (1-5) to each directly on the card.</span>
             </div>
           )}
 
           {/* Game Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {/* Three across on paper: portrait is narrower than md, so without
+              the override a full slate would print one card per row. */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 print:!grid-cols-3 print:gap-2">
             {weekGames.length === 0 ? (
               <div className="col-span-full py-24 text-center">
                 <p className="text-slate-500 text-lg">No games scheduled for this Saturday.</p>

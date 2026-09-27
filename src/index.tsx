@@ -6,10 +6,12 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import { watchSystemTheme } from './lib/theme';
+import { printInLightTheme, watchSystemTheme } from './lib/theme';
 
 // index.html has already applied the saved theme; this keeps "System" live.
 watchSystemTheme();
+// Paper is always white, so it always gets the light palette.
+printInLightTheme();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

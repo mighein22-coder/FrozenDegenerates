@@ -17,6 +17,15 @@ interface GameCardProps {
   teamRecords?: Record<string, string>;
 }
 
+/**
+ * One game on the pick sheet.
+ *
+ * On paper the card never splits across a page break, and every control
+ * becomes the value it holds: the picked side carries a printed tick (and the
+ * one forced background fill, `print-picked` in index.html), the confidence
+ * buttons print as "4 pts", and a game with no pick says so rather than
+ * leaving a gap that reads the same as a forgotten one.
+ */
 export const GameCard: React.FC<GameCardProps> = ({
   game,
   isSelected,
@@ -44,18 +53,20 @@ export const GameCard: React.FC<GameCardProps> = ({
 
   const getTeamStyles = (teamId: string) => {
     const isPicked = selectedTeamId === teamId;
-    const base = "relative flex-1 p-2 rounded-lg transition-all duration-200 border border-transparent flex flex-col items-center justify-center gap-1";
+    const base = "relative flex-1 p-2 rounded-lg transition-all duration-200 border border-transparent flex flex-col items-center justify-center gap-1 print:p-1 print:gap-0.5";
     
     if (disabled) {
         if (isPicked) {
-            return `${base} bg-ice-500/20 border-ice-500 cursor-default opacity-80`;
+            return `${base} bg-ice-500/20 border-ice-500 cursor-default opacity-80 print:opacity-100 print-picked`;
         }
-        return `${base} opacity-40 grayscale cursor-default`;
+        // The fade means "not clickable"; on paper it only makes the slate
+        // hard to read. The grey stays, so the side not taken still recedes.
+        return `${base} opacity-40 grayscale cursor-default print:opacity-100`;
     }
 
     return `${base} cursor-pointer 
       ${isPicked 
-        ? 'bg-ice-500/10 border-ice-500 shadow-[0_0_10px_rgba(14,165,233,0.1)]' 
+        ? 'bg-ice-500/10 border-ice-500 shadow-[0_0_10px_rgba(14,165,233,0.1)] print-picked' 
         : 'hover:bg-slate-800 hover:border-slate-700'
       }`;
   };
@@ -63,10 +74,10 @@ export const GameCard: React.FC<GameCardProps> = ({
   const getLogoUrl = (abbr: string) => `https://assets.nhle.com/logos/nhl/svg/${abbr}_light.svg`;
 
   return (
-    <div className={`group relative bg-slate-900 border border-slate-800 rounded-lg p-3 transition-all duration-300 ${isSelected ? 'ring-1 ring-ice-400/40 bg-slate-900/80' : 'hover:border-slate-700'}`}>
+    <div className={`group relative bg-slate-900 border border-slate-800 rounded-lg p-3 transition-all duration-300 break-inside-avoid print:p-2 ${isSelected ? 'ring-1 ring-ice-400/40 bg-slate-900/80' : 'hover:border-slate-700'}`}>
       
       {disabled && !isSelected && (
-          <div className="absolute inset-0 bg-slate-950/70 z-10 pointer-events-none rounded-lg" />
+          <div className="absolute inset-0 bg-slate-950/70 z-10 pointer-events-none rounded-lg print:hidden" />
       )}
 
       {/* Result Badge - Only show for WIN or LOSS, not PENDING */}
@@ -79,7 +90,7 @@ export const GameCard: React.FC<GameCardProps> = ({
       )}
 
       {/* Header: Time */}
-      <div className="flex items-center justify-between mb-2 relative z-20">
+      <div className="flex items-center justify-between mb-2 relative z-20 print:mb-1">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
           {game.status === 'FINAL'
             ? 'FINAL'
@@ -89,13 +100,13 @@ export const GameCard: React.FC<GameCardProps> = ({
       </div>
 
       {/* Teams Row */}
-      <div className="flex items-stretch justify-between gap-2 relative z-20 mb-2">
+      <div className="flex items-stretch justify-between gap-2 relative z-20 mb-2 print:mb-1">
         {/* Away Team */}
         <div 
           className={getTeamStyles(away.id)}
           onClick={() => !disabled && onSelectTeam(game.id, away.id)}
         >
-          <img src={getLogoUrl(away.abbreviation)} alt={away.name} className="w-10 h-10 object-contain drop-shadow-md" />
+          <img src={getLogoUrl(away.abbreviation)} alt={away.name} className="w-10 h-10 object-contain drop-shadow-md print:w-7 print:h-7" />
           <div className="text-center leading-none">
              <span className="block font-bold text-slate-200 text-sm">{away.abbreviation}</span>
              <span className="block text-[10px] text-slate-500 mt-0.5">{away.name}</span>
@@ -105,8 +116,12 @@ export const GameCard: React.FC<GameCardProps> = ({
           </div>
           {selectedTeamId === away.id && (
              <div className="absolute top-1 right-1">
-                {disabled ? <Lock size={10} className="text-ice-400" /> : <div className="w-2 h-2 bg-ice-500 rounded-full shadow-[0_0_5px_#38bdf8]" />}
+                {disabled ? <Lock size={10} className="text-ice-400" /> : <div className="w-2 h-2 bg-ice-500 rounded-full shadow-[0_0_5px_#38bdf8] print:hidden" />}
              </div>
+          )}
+          {/* The dot is a background, which paper drops; the tick is ink. */}
+          {selectedTeamId === away.id && (
+             <span aria-hidden className="hidden print:block absolute top-0.5 left-1 font-bold text-ice-400">&#10003;</span>
           )}
           {game.status === 'FINAL' && typeof game.awayScore === 'number' && (
              <div className="mt-1 font-display text-xl font-bold text-white">{game.awayScore}</div>
@@ -120,7 +135,7 @@ export const GameCard: React.FC<GameCardProps> = ({
           className={getTeamStyles(home.id)}
           onClick={() => !disabled && onSelectTeam(game.id, home.id)}
         >
-           <img src={getLogoUrl(home.abbreviation)} alt={home.name} className="w-10 h-10 object-contain drop-shadow-md" />
+           <img src={getLogoUrl(home.abbreviation)} alt={home.name} className="w-10 h-10 object-contain drop-shadow-md print:w-7 print:h-7" />
            <div className="text-center leading-none">
             <span className="block font-bold text-slate-200 text-sm">{home.abbreviation}</span>
             <span className="block text-[10px] text-slate-500 mt-0.5">{home.name}</span>
@@ -130,8 +145,12 @@ export const GameCard: React.FC<GameCardProps> = ({
           </div>
           {selectedTeamId === home.id && (
              <div className="absolute top-1 right-1">
-                {disabled ? <Lock size={10} className="text-ice-400" /> : <div className="w-2 h-2 bg-ice-500 rounded-full shadow-[0_0_5px_#38bdf8]" />}
+                {disabled ? <Lock size={10} className="text-ice-400" /> : <div className="w-2 h-2 bg-ice-500 rounded-full shadow-[0_0_5px_#38bdf8] print:hidden" />}
              </div>
+          )}
+          {/* The dot is a background, which paper drops; the tick is ink. */}
+          {selectedTeamId === home.id && (
+             <span aria-hidden className="hidden print:block absolute top-0.5 left-1 font-bold text-ice-400">&#10003;</span>
           )}
           {game.status === 'FINAL' && typeof game.homeScore === 'number' && (
              <div className="mt-1 font-display text-xl font-bold text-white">{game.homeScore}</div>
@@ -141,12 +160,20 @@ export const GameCard: React.FC<GameCardProps> = ({
 
       {/* Confidence Selector (Only if selected) */}
       {isSelected && (
-          <div className="mt-2 pt-2 border-t border-slate-800/50 animate-in fade-in slide-in-from-top-1">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5 px-1">
+          <div className="mt-2 pt-2 border-t border-slate-800/50 animate-in fade-in slide-in-from-top-1 print:mt-1 print:pt-1">
+            <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5 px-1 print:mb-0">
                 <span>Confidence</span>
-                <span className={`font-bold ${confidence > 0 ? 'text-ice-400' : 'text-slate-600'}`}>{confidence > 0 ? `${confidence} pts` : 'Select'}</span>
+                <span className={`font-bold ${confidence > 0 ? 'text-ice-400' : 'text-slate-600'}`}>
+                  {confidence > 0 ? `${confidence} pts` : (
+                    <>
+                      <span className="print:hidden">Select</span>
+                      <span className="hidden print:inline">Not set</span>
+                    </>
+                  )}
+                </span>
             </div>
-            <div className="flex justify-between gap-1">
+            {/* A row of buttons the reader cannot press; the value is printed above. */}
+            <div className="flex justify-between gap-1 print:hidden">
                 {[1, 2, 3, 4, 5].map(val => {
                     const isUsed = usedConfidences.includes(val) && confidence !== val;
                     const isActive = confidence === val;
@@ -171,6 +198,14 @@ export const GameCard: React.FC<GameCardProps> = ({
                 })}
             </div>
           </div>
+      )}
+
+      {/* Print only. On screen an unpicked card is plainly unpicked; on paper a
+          game left alone and a pick that failed to print look the same. */}
+      {!isSelected && (
+        <p className="hidden print:block mt-1 pt-1 border-t border-slate-800/50 text-xs font-bold text-slate-500 text-center">
+          No pick
+        </p>
       )}
     </div>
   );

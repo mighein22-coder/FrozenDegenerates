@@ -19,8 +19,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin = false }) =
 
   return (
     <>
-      {/* Sidebar — hidden on mobile, visible on md+ */}
-      <aside className="hidden md:flex fixed left-0 top-0 h-full w-20 lg:w-64 bg-slate-900 border-r border-slate-800 z-50 flex-col">
+      {/* Sidebar — hidden on mobile, visible on md+. `print:!hidden` needs the
+          important marker: a landscape page is wider than md, so `md:flex` is
+          live at print time too. */}
+      <aside className="hidden md:flex fixed left-0 top-0 h-full w-20 lg:w-64 bg-slate-900 border-r border-slate-800 z-50 flex-col print:!hidden">
         {/* Logo */}
         <div className="p-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-tr from-ice-400 to-ice-600 rounded-lg shadow-lg shadow-ice-500/20 shrink-0"></div>
@@ -67,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin = false }) =
       </aside>
 
       {/* Bottom nav — mobile only */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-800 flex items-center">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-800 flex items-center print:!hidden">
         {navItems.map(({ path, icon: Icon, shortLabel }) => (
           <NavLink
             key={path}
