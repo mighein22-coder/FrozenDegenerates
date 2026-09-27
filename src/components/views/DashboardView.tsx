@@ -19,7 +19,8 @@ import { summarizeWeekSheet, topStandings, type WeekSheet } from '../../lib/dash
  *
  * The standings arrive already scoped to the current segment, which is what the
  * Standings screen opens on, so the top five here is the top five there. The
- * order comes from `computeStandings`; nothing on this screen re-sorts it.
+ * order — points, wins, fewest losses, name — comes from `computeStandings`;
+ * nothing on this screen re-sorts it (issue #39).
  */
 interface DashboardViewProps {
   user: Profile;

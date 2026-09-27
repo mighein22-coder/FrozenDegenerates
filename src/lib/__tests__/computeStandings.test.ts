@@ -63,7 +63,7 @@ describe('computeStandings — season scope', () => {
 
 describe('computeStandings — segment scope', () => {
   it('resets points, record and rank to the segment', () => {
-    const seg1 = computeStandings([ann, bob, cy], picks, { segment: 1 });
+    const seg1 = computeStandings([ann, bob, cy], picks, { within: { segment: 1 } });
     expect(seg1.map(r => [r.name, r.totalPoints, r.rank])).toEqual([
       ['Ann', 9, 1], // 5 + 4 in segment 1
       ['Bob', 1, 2],
@@ -77,7 +77,7 @@ describe('computeStandings — segment scope', () => {
   });
 
   it('keeps seasonPoints cumulative while scoped', () => {
-    const seg1 = computeStandings([ann, bob, cy], picks, { segment: 1 });
+    const seg1 = computeStandings([ann, bob, cy], picks, { within: { segment: 1 } });
     const byName = Object.fromEntries(seg1.map(r => [r.name, r]));
     expect(byName.Ann.totalPoints).toBe(9);
     expect(byName.Ann.seasonPoints).toBe(10);
@@ -88,7 +88,7 @@ describe('computeStandings — segment scope', () => {
   it('scopes wins and losses too', () => {
     const withLosses = [...picks, pick('ann', '2026-10-10', 0), pick('ann', '2027-03-13', 0)];
 
-    const seg1 = computeStandings([ann], withLosses, { segment: 1 });
+    const seg1 = computeStandings([ann], withLosses, { within: { segment: 1 } });
     expect([seg1[0].wins, seg1[0].losses]).toEqual([2, 1]);
 
     const season = computeStandings([ann], withLosses);
@@ -96,7 +96,7 @@ describe('computeStandings — segment scope', () => {
   });
 
   it('still lists a member with no picks in the segment, at zero', () => {
-    const seg2 = computeStandings([ann, bob, cy], picks, { segment: 2 });
+    const seg2 = computeStandings([ann, bob, cy], picks, { within: { segment: 2 } });
     expect(seg2.map(r => r.name).sort()).toEqual(['Ann', 'Bob', 'Cy']);
 
     const byName = Object.fromEntries(seg2.map(r => [r.name, r]));
@@ -110,8 +110,8 @@ describe('computeStandings — segment scope', () => {
 
     // Counts toward the season, belongs to no segment
     expect(computeStandings([cy], withPreseason)[0].totalPoints).toBe(8);
-    expect(computeStandings([cy], withPreseason, { segment: 1 })[0].totalPoints).toBe(0);
-    expect(computeStandings([cy], withPreseason, { segment: 2 })[0].totalPoints).toBe(3);
+    expect(computeStandings([cy], withPreseason, { within: { segment: 1 } })[0].totalPoints).toBe(0);
+    expect(computeStandings([cy], withPreseason, { within: { segment: 2 } })[0].totalPoints).toBe(3);
   });
 });
 
@@ -134,9 +134,94 @@ describe('computeStandings — weekly score', () => {
   it('stays a season-wide figure even when a segment is selected', () => {
     const rows = computeStandings([ann], picks, {
       weekId: 'week-2027-03-06',
-      segment: 1
+      within: { segment: 1 }
     });
     expect(rows[0].totalPoints).toBe(9); // segment 1 only
     expect(rows[0].weeklyScore).toBe(1); // the week actually asked for
+  });
+});
+
+describe('computeStandings — week scope', () => {
+  it('orders by that week alone', () => {
+    // Ann is well ahead on the season; 2027-03-06 is Bob's week.
+    const rows = computeStandings([ann, bob, cy], picks, {
+      within: { week: 'week-2027-03-06' }
+    });
+    expect(rows.map(r => [r.name, r.totalPoints])).toEqual([
+      ['Bob', 5],
+      ['Ann', 1],
+      ['Cy', 0]
+    ]);
+  });
+
+  it('keeps seasonPoints cumulative and lists members who sat the week out', () => {
+    const rows = computeStandings([ann, bob, cy], picks, {
+      within: { week: 'week-2026-12-12' }
+    });
+    const byName = Object.fromEntries(rows.map(r => [r.name, r]));
+    expect(byName.Cy).toMatchObject({ totalPoints: 3, seasonPoints: 3, rank: 1 });
+    expect(byName.Ann).toMatchObject({ totalPoints: 0, wins: 0, losses: 0, seasonPoints: 10 });
+  });
+
+  it('applies the fewest-losses tiebreaker inside the week', () => {
+    const week = '2026-10-24';
+    const rows = computeStandings(
+      [ann, bob],
+      [
+        // Both 3 points off one win; Ann also lost two picks that week.
+        pick('ann', week, 3),
+        { ...pick('ann', week, 0), gameId: 'ann-l1' },
+        { ...pick('ann', week, 0), gameId: 'ann-l2' },
+        pick('bob', week, 3)
+      ],
+      { within: { week: `week-${week}` } }
+    );
+    expect(rows.map(r => [r.name, r.wins, r.losses, r.rank])).toEqual([
+      ['Bob', 1, 0, 1],
+      ['Ann', 1, 2, 2]
+    ]);
+  });
+
+  it('has everyone level before anything in the week is scored', () => {
+    // Pending picks earn nothing, so the order falls through to the name.
+    const week = '2027-04-17';
+    const rows = computeStandings(
+      [cy, bob, ann],
+      [...picks, pick('cy', week, 0, 'PENDING'), pick('bob', week, 0, 'PENDING')],
+      { within: { week: `week-${week}` } }
+    );
+    expect(rows.map(r => [r.name, r.totalPoints, r.rank])).toEqual([
+      ['Ann', 0, 1],
+      ['Bob', 0, 1],
+      ['Cy', 0, 1]
+    ]);
+  });
+
+  it('scopes the order without disturbing the weekly column', () => {
+    // `weekId` names the column; `within` decides the order.
+    const [row] = computeStandings([ann], picks, {
+      within: { week: 'week-2026-10-17' },
+      weekId: 'week-2027-03-06'
+    });
+    expect(row.totalPoints).toBe(5); // the scope
+    expect(row.weeklyScore).toBe(1); // the column
+    expect(row.seasonPoints).toBe(10);
+  });
+});
+
+describe('computeStandings — tiebreakers', () => {
+  it('puts the fewer-losses member ahead of an equal-points, equal-wins rival', () => {
+    const rows = computeStandings(
+      [ann, bob],
+      [
+        pick('ann', '2026-10-17', 3),
+        pick('ann', '2026-10-24', 0), // a lost pick
+        pick('bob', '2026-10-17', 3)
+      ]
+    );
+    expect(rows.map(r => [r.name, r.rank])).toEqual([
+      ['Bob', 1],
+      ['Ann', 2]
+    ]);
   });
 });

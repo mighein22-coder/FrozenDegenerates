@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { summarizeWeekSheet, topStandings } from '../dashboard';
+import { computeStandings } from '../standings';
+import type { Profile } from '../supabase';
 import type { Game, Pick, StandingsRow } from '../../types';
 
 const WEEK = 'week-2026-10-03';
@@ -105,5 +107,51 @@ describe('topStandings', () => {
   it('handles a pool smaller than the limit, and an unknown member', () => {
     const small = table.slice(0, 3);
     expect(topStandings(small, 'zzz')).toEqual({ top: small, mine: null });
+  });
+});
+
+describe('topStandings — same order as the Standings screen (issue #39)', () => {
+  const member = (id: string): Profile => ({
+    id,
+    name: id.toUpperCase(),
+    email: `${id}@example.com`,
+    avatar: null,
+    role: 'member',
+    created_at: '',
+    updated_at: ''
+  });
+
+  const scored = (userId: string, n: number, points: number, result: Pick['result']): Pick => ({
+    userId,
+    weekId: 'week-2026-10-17',
+    gameId: `${userId}-${n}`,
+    selectedTeamId: 'BOS',
+    confidence: points || 1,
+    result,
+    pointsEarned: points
+  });
+
+  it('keeps the fewest-losses tiebreak and the ranks, without re-sorting', () => {
+    const profiles = ['a', 'b', 'c', 'd', 'e', 'f'].map(member);
+    const picks: Pick[] = [
+      // B and C: 5 points off one win each; C lost two more getting there.
+      scored('b', 1, 5, 'WIN'),
+      scored('c', 1, 5, 'WIN'),
+      scored('c', 2, 0, 'LOSS'),
+      scored('c', 3, 0, 'LOSS'),
+      scored('a', 1, 3, 'WIN'),
+      scored('d', 1, 2, 'WIN'),
+      scored('e', 1, 1, 'WIN'),
+      scored('f', 1, 0, 'LOSS')
+    ];
+
+    // What the Standings screen renders, row for row.
+    const standings = computeStandings(profiles, picks, { within: { segment: 1 } });
+    const { top, mine } = topStandings(standings, 'f');
+
+    expect(top.map(r => r.userId)).toEqual(['b', 'c', 'a', 'd', 'e']);
+    expect(top.map(r => r.rank)).toEqual([1, 2, 3, 4, 5]);
+    expect(top).toEqual(standings.slice(0, 5));
+    expect(mine?.userId).toBe('f');
   });
 });

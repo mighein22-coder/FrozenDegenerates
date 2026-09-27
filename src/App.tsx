@@ -458,11 +458,16 @@ function App() {
     }
   };
 
-  // Standings, derived rather than fetched. The standings view follows the
-  // selected segment; the dashboard follows the current one (below).
-  const seasonStandings = useMemo(
-    () => computeStandings(leagueProfiles, allPicks, { weekId: currentWeek?.id }),
-    [leagueProfiles, allPicks, currentWeek]
+  // Standings, derived rather than fetched, and every list of members — the
+  // Standings table, the Dashboard's top five, the League Matrix — takes its
+  // order from `computeStandings`. None of them sorts for itself (issue #39).
+
+  // The segment the season is in now. It is BOTH the scope the Standings
+  // screen opens on with no ?segment= AND the Dashboard's scope, read from
+  // this one value so the top five there is always the top five here.
+  const currentSegment = useMemo(
+    () => getCurrentSegment(currentWeek?.startDate, segments),
+    [currentWeek, segments]
   );
 
   // Which scope the standings show: ?segment=1|2|3, ?segment=season, or — with
@@ -474,37 +479,28 @@ function App() {
     const asNumber = Number(requested);
     if (requested !== null && segments.some(s => s.number === asNumber)) return asNumber;
 
-    return getCurrentSegment(currentWeek?.startDate, segments)?.number ?? null;
-  }, [searchParams, segments, currentWeek]);
+    return currentSegment?.number ?? null;
+  }, [searchParams, segments, currentSegment]);
 
   const setSelectedSegment = (segment: number | null) =>
     setParam('segment', segment === null ? 'season' : String(segment));
 
   const scopedStandings = useMemo(
     () =>
-      selectedSegment === null
-        ? seasonStandings
-        : computeStandings(leagueProfiles, allPicks, {
-            weekId: currentWeek?.id,
-            segment: selectedSegment
-          }),
-    [selectedSegment, seasonStandings, leagueProfiles, allPicks, currentWeek]
-  );
-
-  // The dashboard's top five: the current segment, which is the scope the
-  // Standings screen opens on with no ?segment= — so the two always agree.
-  const dashboardSegment = useMemo(
-    () => getCurrentSegment(currentWeek?.startDate, segments),
-    [currentWeek, segments]
+      computeStandings(leagueProfiles, allPicks, {
+        weekId: currentWeek?.id,
+        within: selectedSegment === null ? null : { segment: selectedSegment }
+      }),
+    [selectedSegment, leagueProfiles, allPicks, currentWeek]
   );
 
   const dashboardStandings = useMemo(
     () =>
       computeStandings(leagueProfiles, allPicks, {
         weekId: currentWeek?.id,
-        segment: dashboardSegment?.number ?? null
+        within: currentSegment ? { segment: currentSegment.number } : null
       }),
-    [leagueProfiles, allPicks, currentWeek, dashboardSegment]
+    [leagueProfiles, allPicks, currentWeek, currentSegment]
   );
 
   // The member's saved sheet for this week, with results. Taken from allPicks
@@ -700,7 +696,7 @@ function App() {
                 isLocked={isLocked}
                 timeLeft={timeLeft}
                 standings={dashboardStandings}
-                segment={dashboardSegment}
+                segment={currentSegment}
               />
             }
           />
