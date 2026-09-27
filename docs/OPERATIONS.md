@@ -199,26 +199,26 @@ stored** — there is no table and nothing to backfill.
 Everything follows from two constants in `src/constants.ts`:
 
 ```ts
-export const SEASON_START = '2026-09-29';
+export const SEASON_START = '2026-10-06';
 export const SEASON_END   = '2027-04-10';
 ```
 
 `src/lib/segments.ts` enumerates every Saturday in that range and splits them
 into three contiguous groups, giving any remainder to the earlier segments so
-sizes never differ by more than one. For 2026-27 that is 28 Saturdays, split
-10 / 9 / 9:
+sizes never differ by more than one. For 2026-27 that is 27 Saturdays, split
+9 / 9 / 9 (the opening Saturday, 2026-10-03, deliberately falls outside):
 
 | Segment | Weeks | Range |
 |---|---|---|
-| 1 | 10 | 2026-10-03 → 2026-12-05 |
+| 1 | 9 | 2026-10-10 → 2026-12-05 |
 | 2 | 9 | 2026-12-12 → 2027-02-06 |
 | 3 | 9 | 2027-02-13 → 2027-04-10 |
 
 **Update the two constants every season.** They are the only dial controlling
 where the boundaries fall — move them and every segment recomputes, including
 for weeks that do not exist yet. If a boundary needs to land on a particular
-date, nudge `SEASON_START`: one week later turns 28 Saturdays into 27 and
-resplits them 9/9/9.
+date, nudge `SEASON_START`: one week earlier turns 27 Saturdays into 28 and
+resplits them 10/9/9.
 
 A week outside the configured range belongs to no segment. Its picks still count
 toward the season total but appear in none of the three segment tables, which is

@@ -30,6 +30,7 @@ Migrations are written to be idempotent, so re-running one is safe.
 | `0009_invites_and_membership.sql` | ☑ applied (date not recorded) | Self-serve signup gated by invite codes. Supersedes 0002: a `profiles` row can no longer be self-inserted, only created by `redeem_invite()` |
 | `0010_fix_save_picks_game_id_cast.sql` | ☑ applied 2026-09-22 | Adds the `::uuid` cast `0005` omitted. Without it `save_picks` raised on every call and no member could submit a sheet. Verified by submitting one from the Picks view. See ASSESSMENT.md #28 |
 | `0011_noon_deadline.sql` | ☑ applied 2026-09-26 | Moves the pick deadline from Saturday 10:00 to 12:00 ET by redefining `picks_revealed()`. Ships with the client change in `src/lib/timezone.ts`; apply it with that deploy so the UI and database lock together |
+| `0012_delete_preseason_weeks.sql` | ☐ not yet applied | Deletes the 9/12 and 9/26 preseason dry-run weeks with their games and picks, so no week sits outside the season segments. **Permanent** — run the pre-flight first |
 
 Tick the boxes above once the pool admin has run them against production. Apply
 them in numeric order — 0002 assumes 0001 is already in place, and 0004 depends

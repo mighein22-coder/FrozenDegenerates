@@ -35,10 +35,10 @@ const cy = profile('cy', 'Cy');
 
 // Ann front-loads the season, Bob finishes strong, Cy plays only segment 2.
 const picks: Pick[] = [
-  pick('ann', '2026-10-03', 5), // seg 1
+  pick('ann', '2026-10-17', 5), // seg 1
   pick('ann', '2026-11-07', 4), // seg 1
   pick('ann', '2027-03-06', 1), // seg 3
-  pick('bob', '2026-10-03', 1), // seg 1
+  pick('bob', '2026-10-17', 1), // seg 1
   pick('bob', '2027-03-06', 5), // seg 3
   pick('bob', '2027-04-10', 5), // seg 3
   pick('cy', '2026-12-12', 3) // seg 2
@@ -117,7 +117,7 @@ describe('computeStandings — segment scope', () => {
 
 describe('computeStandings — weekly score', () => {
   it('uses the requested week', () => {
-    const rows = computeStandings([ann], picks, { weekId: 'week-2026-10-03' });
+    const rows = computeStandings([ann], picks, { weekId: 'week-2026-10-17' });
     expect(rows[0].weeklyScore).toBe(5);
   });
 

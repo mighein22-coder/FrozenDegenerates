@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  clampToSeasonSaturday,
   getSeasonSaturdays,
   getSegments,
   getSegmentForDate,
@@ -36,7 +37,7 @@ describe('getSegments', () => {
     const segments = getSegments(SEASON_START, SEASON_END);
 
     expect(segments.map(s => [s.startDate, s.endDate, s.weekCount])).toEqual([
-      ['2026-10-03', '2026-12-05', 10],
+      ['2026-10-10', '2026-12-05', 9],
       ['2026-12-12', '2027-02-06', 9],
       ['2027-02-13', '2027-04-10', 9]
     ]);
@@ -75,7 +76,7 @@ describe('getSegments', () => {
 
 describe('getSegmentForDate', () => {
   it('is inclusive of both boundary Saturdays', () => {
-    expect(getSegmentForDate('2026-10-03')?.number).toBe(1); // first of seg 1
+    expect(getSegmentForDate('2026-10-10')?.number).toBe(1); // first of seg 1
     expect(getSegmentForDate('2026-12-05')?.number).toBe(1); // last of seg 1
     expect(getSegmentForDate('2026-12-12')?.number).toBe(2); // first of seg 2
     expect(getSegmentForDate('2027-02-06')?.number).toBe(2); // last of seg 2
@@ -85,6 +86,7 @@ describe('getSegmentForDate', () => {
 
   it('returns null outside the season', () => {
     expect(getSegmentForDate('2026-09-26')).toBeNull(); // preseason
+    expect(getSegmentForDate('2026-10-03')).toBeNull(); // opening week, outside the segments
     expect(getSegmentForDate('2027-04-17')).toBeNull(); // playoffs
   });
 });
@@ -117,5 +119,20 @@ describe('getCurrentSegment', () => {
   it('falls into the right segment mid-gap between two segments', () => {
     // A Wednesday between seg 1's last Saturday and seg 2's first
     expect(getCurrentSegment('2026-12-09')?.number).toBe(1);
+  });
+});
+
+describe('clampToSeasonSaturday', () => {
+  it('never lands outside the season Saturdays', () => {
+    // Opening Saturday 10/3 is outside the segments: the week is 10/10
+    expect(clampToSeasonSaturday('2026-10-03')).toEqual({ saturday: '2026-10-10', weekNumber: 1 });
+    expect(clampToSeasonSaturday('2026-09-26')).toEqual({ saturday: '2026-10-10', weekNumber: 1 });
+    expect(clampToSeasonSaturday('2026-12-12')).toEqual({ saturday: '2026-12-12', weekNumber: 10 });
+    expect(clampToSeasonSaturday('2027-04-10')).toEqual({ saturday: '2027-04-10', weekNumber: 27 });
+    expect(clampToSeasonSaturday('2027-04-17')).toEqual({ saturday: '2027-04-10', weekNumber: 27 });
+  });
+
+  it('returns null for an empty season', () => {
+    expect(clampToSeasonSaturday('2026-10-10', [])).toBeNull();
   });
 });

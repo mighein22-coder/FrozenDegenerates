@@ -57,8 +57,8 @@ export function getSeasonSaturdays(
  * length as possible. When the count does not divide evenly the earlier
  * segments absorb the remainder, so sizes never differ by more than one.
  *
- * For 2026-27 this yields 28 Saturdays split 10 / 9 / 9:
- *   Segment 1  2026-10-03 → 2026-12-05
+ * For 2026-27 this yields 27 Saturdays split 9 / 9 / 9:
+ *   Segment 1  2026-10-10 → 2026-12-05
  *   Segment 2  2026-12-12 → 2027-02-06
  *   Segment 3  2027-02-13 → 2027-04-10
  */
@@ -134,4 +134,21 @@ export function getCurrentSegment(
     [...segments].reverse().find(s => today > s.endDate) ??
     segments[0]
   );
+}
+
+/**
+ * The season Saturday a pick week should use for a target date, and its
+ * 1-based week number. Every pick week lies inside a segment: before the first
+ * season Saturday this returns the first one (so the opening pick week is
+ * offered early), and after the last it stays on the last. Null only when the
+ * configured season contains no Saturdays at all.
+ */
+export function clampToSeasonSaturday(
+  dateStr: string,
+  saturdays: string[] = getSeasonSaturdays()
+): { saturday: string; weekNumber: number } | null {
+  if (saturdays.length === 0) return null;
+  let index = saturdays.findIndex(s => s >= dateStr);
+  if (index === -1) index = saturdays.length - 1;
+  return { saturday: saturdays[index], weekNumber: index + 1 };
 }

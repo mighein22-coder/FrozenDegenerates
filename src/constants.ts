@@ -8,13 +8,15 @@ import { Team } from './types';
  * Saturdays inside this range count; the exact start and end days need not be
  * Saturdays themselves.
  *
- * 2026-27: opens Tuesday 29 September 2026 and concludes Saturday 10 April 2027
- * — the NHL's first 84-game season since 1993-94.
+ * 2026-27: the NHL opens Tuesday 29 September 2026 and concludes Saturday 10
+ * April 2027 — the NHL's first 84-game season since 1993-94. SEASON_START is set
+ * a week later so the opening Saturday (3 October) falls outside the segments,
+ * giving 27 Saturdays split 9 / 9 / 9. Its picks still count toward the season.
  *
  * UPDATE THESE EVERY SEASON. They are the only dial controlling where the
  * segment boundaries fall.
  */
-export const SEASON_START = '2026-09-29';
+export const SEASON_START = '2026-10-06';
 export const SEASON_END = '2027-04-10';
 
 /** Label shown for the whole-season view, alongside the three segments. */

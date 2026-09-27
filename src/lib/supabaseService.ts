@@ -1,5 +1,6 @@
 import { supabase, type Profile, type WeekRow, type GameRow, type PickRow, type InviteRow } from './supabase';
 import { getTargetSaturdayDate, arePicksLocked } from './timezone';
+import { clampToSeasonSaturday } from './segments';
 import type { User, Week, Game, Pick, Invite, InviteClaim } from '../types';
 
 /**
@@ -80,8 +81,13 @@ export const supabaseService = {
    * Get the current week based on ET timezone logic (Monday 6 AM transition)
    */
   async getCurrentWeek(): Promise<Week> {
-    const targetSat = getTargetSaturdayDate();
-    const weekId = `week-${targetSat.toISOString().split('T')[0]}`;
+    // Pick weeks only exist inside the season segments: before the first
+    // season Saturday the current week is the opening one, after the last it
+    // stays on the final one.
+    const target = getTargetSaturdayDate().toISOString().split('T')[0];
+    const season = clampToSeasonSaturday(target);
+    if (!season) throw new Error('No Saturdays in the configured season (SEASON_START / SEASON_END)');
+    const weekId = `week-${season.saturday}`;
 
     // Try to get existing week
     let { data: week } = await supabase
@@ -92,22 +98,12 @@ export const supabaseService = {
 
     // Create week if doesn't exist
     if (!week) {
-      // Calculate sequential week number (count weeks from Oct 1 of current/previous year)
-      const satDate = new Date(targetSat);
-      const year = satDate.getUTCFullYear();
-      const seasonStart = new Date(Date.UTC(year, 9, 1)); // October 1st
-      // If Saturday is before Oct 1, use previous year's season start
-      if (satDate < seasonStart) {
-        seasonStart.setUTCFullYear(year - 1);
-      }
-      const weekNumber = Math.floor((satDate.getTime() - seasonStart.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
-
       const { data: newWeek, error } = await supabase
         .from('weeks')
         .insert({
           id: weekId,
-          week_number: weekNumber,
-          saturday_date: targetSat.toISOString().split('T')[0],
+          week_number: season.weekNumber,
+          saturday_date: season.saturday,
           status: 'OPEN'
         })
         .select()
