@@ -93,6 +93,25 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## Done
 
+### Printing (issue #40, 2026-09-27)
+
+- [x] **Print buttons on the League Matrix and the Picks sheet.** Both call
+      `window.print()`, which opens the normal Windows print dialog (real
+      printers and Microsoft Print to PDF). Mirrors DegenNFL #24.
+      - Paper always uses the light palette: `printInLightTheme()` in
+        `lib/theme.ts` switches `data-theme` on `beforeprint` and restores it on
+        `afterprint`. The dark theme would otherwise print near-white text on a
+        white sheet.
+      - The pick sheet prints as a record: the whole slate, a tick and a pale
+        fill on each picked side, confidence as text, "No pick" on games left
+        alone, the member's name and print time, and a banner when the sheet
+        has unsubmitted changes. A 14-game slate fits one portrait page.
+      - The matrix prints the grid on a landscape page (named `@page matrix`
+        in `index.html`), with no scroller, no sticky column and no mobile
+        card list.
+      - Checked with headless Edge print-to-PDF against mock data. Still
+        worth one Ctrl+P on each screen with real data before 10/3.
+
 ### Cleanup (ASSESSMENT #11–#20 and drift)
 
 - [x] Unify the `Week` shape — `getCurrentWeek()` returned a raw snake_case row

@@ -669,7 +669,9 @@ function App() {
     <div className="min-h-screen bg-slate-950 flex text-slate-200 font-sans selection:bg-ice-500/30">
       <Sidebar onLogout={handleLogout} isAdmin={isAdmin} />
 
-      <main className="flex-1 md:ml-20 lg:ml-64 p-4 lg:p-10 pb-24 md:pb-4 lg:pb-10 max-w-7xl mx-auto w-full">
+      {/* On paper there is no sidebar to clear and no bottom nav to pad for,
+          and the page margins come from @page in index.html. */}
+      <main className="flex-1 md:ml-20 lg:ml-64 p-4 lg:p-10 pb-24 md:pb-4 lg:pb-10 max-w-7xl mx-auto w-full print:!m-0 print:!p-0 print:max-w-none">
         {/* Data Load Error Banner */}
         {loadError && (
           <div className="mb-4 p-4 bg-red-900/30 border border-red-500/50 rounded-lg text-red-200 flex items-start justify-between">
@@ -723,6 +725,7 @@ function App() {
                   hasSavedSheet={savedPicks.length > 0}
                   loadingSchedule={loadingSchedule}
                   sourceUrl={sourceUrl}
+                  memberName={profile.name}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">

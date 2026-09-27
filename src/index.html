@@ -126,6 +126,45 @@
       ::-webkit-scrollbar-thumb:hover {
         background: rgb(var(--c-ice-500));
       }
+
+      /* Paper. The palette itself is handled by printInLightTheme() in
+         lib/theme.ts, which switches to the light theme for the length of the
+         print; what is shown or hidden is decided by the `print:` utilities on
+         each screen. This block only holds what a utility cannot say. */
+      @media print {
+        @page {
+          margin: 12mm;
+        }
+
+        /* The League Matrix is a player-by-game grid up to sixteen games wide
+           and does not fit portrait. A named page is the only way to ask for
+           landscape on one screen and not another; a browser without named
+           pages prints portrait, which squeezes rather than fails. */
+        @page matrix {
+          size: landscape;
+        }
+        .print-landscape {
+          page: matrix;
+        }
+
+        /* The one place a background is forced onto paper. On the pick sheet
+           the fill says "this is the side I took", and browsers drop
+           backgrounds unless the member ticks "Background graphics" — a
+           setting nobody should need to know about. The printed tick carries
+           the same fact for a printer that eats the fill. -webkit- first: it is
+           what older Chrome and every Safari honour. */
+        .print-picked {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          background-color: rgb(var(--c-ice-900) / 0.6) !important;
+        }
+
+        /* Nothing on paper is clicked; a hover or fade caught mid-print is noise. */
+        * {
+          transition: none !important;
+          animation: none !important;
+        }
+      }
     </style>
   <!-- importmap removed - Vite handles module resolution in dev/build -->
   <!-- Styling comes from the Tailwind CDN script above; there is no separate stylesheet -->

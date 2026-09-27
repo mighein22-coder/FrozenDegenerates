@@ -66,3 +66,21 @@ export function watchSystemTheme(): void {
     if (getThemePreference() === 'system') applyTheme('system');
   });
 }
+
+/**
+ * Print on the light palette whatever the screen is showing.
+ *
+ * Browsers drop background colours on paper unless the member ticks
+ * "Background graphics", but print text colours exactly as specified — so the
+ * dark theme prints near-white text on a white sheet. Swapping `data-theme`
+ * for the length of the print reuses the light palette rather than keeping a
+ * third copy of it in an `@media print` block. `beforeprint` fires for the
+ * Print button and for Ctrl+P alike; `afterprint` puts the member's own
+ * choice back.
+ */
+export function printInLightTheme(): void {
+  window.addEventListener('beforeprint', () => {
+    document.documentElement.dataset.theme = 'light';
+  });
+  window.addEventListener('afterprint', () => applyTheme());
+}
