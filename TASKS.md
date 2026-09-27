@@ -93,6 +93,53 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## Done
 
+### Standings order (issue #39, 2026-09-27)
+
+Mirrors DegenNFL #22, #23 and #27 (its PR #26).
+
+- [x] **One member order on all three screens.** Points desc → wins desc →
+      **losses ascending** → name, in one unexported `compareStandings` in
+      `lib/standings.ts`. The Standings table, the Dashboard's top five and the
+      League Matrix all render rows in the order `computeStandings` returns
+      and none of them sorts for itself. Shared ranks now need points, wins
+      *and* losses to match, since a rank shared by two rows the sort just
+      separated would be the table contradicting itself.
+
+      Losses only ever separate two members who made a different number of
+      picks: a missed week, or a short sheet. When everyone plays five, wins
+      descending already implies losses ascending.
+
+      The Dashboard needed no ordering code. It already read the same scope
+      the Standings screen opens on. `App.tsx` now takes both from one
+      `currentSegment` value, so they cannot drift apart, and
+      `dashboard.test.ts` covers the Dashboard shortlist matching the
+      Standings table.
+
+- [x] **Order-by pills on the League Matrix**, beside Print matrix: `Week n`
+      (default) / `Segment n` / `Full Season`, kept in the URL as
+      `?order=`. The rule stays `computeStandings`; only its scope changes.
+      Both narrow scopes follow the week selector, so Segment means the
+      segment that week falls in. On a week outside every segment (the 9/26
+      dry run) the Segment pill is disabled and falls back to the season.
+      Logic is in `lib/matrixOrder.ts`, with tests.
+
+      `StandingsScope.segment` became `within: {segment} | {week} | null`.
+      Before, `weekId` only chose the weekly *column* and filtered nothing,
+      so nothing could scope the order to one week.
+
+      The grid gained a **Pts column** (scope points over W-L, also on the
+      mobile cards) so the order explains itself. On paper the pills are
+      hidden and the subtitle says the order in words, because two printed
+      grids of the same week would otherwise look alike.
+
+      Before any game in a week is final, everyone is 0-0 on Week and rows
+      fall back to name order. Other members' picks are unreadable until the
+      deadline anyway, and pending picks score nothing.
+
+      Checked against mock data in all three scopes, including a preseason
+      week, the mobile cards, light mode and the print layout. Not yet seen
+      against real results.
+
 ### Printing (issue #40, 2026-09-27)
 
 - [x] **Print buttons on the League Matrix and the Picks sheet.** Both call
@@ -119,7 +166,8 @@ Operational detail lives in `docs/OPERATIONS.md`.
       DB types to `*Row` and mapped at the service boundary. Cleared 12
       pre-existing typecheck errors that `vite build` never surfaced.
 - [x] #16 Standings tiebreaker — points, then wins, then name, with competition
-      ranks so tied players share a rank.
+      ranks so tied players share a rank. (Fewest losses was added before the
+      name by issue #39.)
 - [x] #15 Validate `dateStr` / `weekId` before interpolating into NHL API URLs.
 - [x] #12 Batch the N+1 loaders in Team Stats and My History (`.in()` queries).
 - [x] #13 Skip `sync-week` for COMPLETED weeks, and stop `getRecentIncompleteWeeks`

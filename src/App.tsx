@@ -6,6 +6,7 @@ import { isAuthCallback } from './lib/authRedirect';
 import { getTimeUntilDeadline, arePicksLocked } from './lib/timezone';
 import { computeStandings } from './lib/standings';
 import { getSegments, getCurrentSegment } from './lib/segments';
+import { parseMatrixOrder, resolveMatrixOrder, type MatrixOrder } from './lib/matrixOrder';
 import { hasUnsavedPickChanges } from './lib/picks';
 import type { Week, Game, Pick } from './types';
 import type { Profile } from './lib/supabase';
@@ -503,6 +504,29 @@ function App() {
     [leagueProfiles, allPicks, currentWeek, currentSegment]
   );
 
+  // The Matrix's row order: ?order=week|segment|season, scoped off the week in
+  // its selector. Week by default — see lib/matrixOrder.ts.
+  const matrixOrder = useMemo(
+    () =>
+      resolveMatrixOrder(
+        parseMatrixOrder(searchParams.get('order')),
+        selectedResultsWeekId,
+        segments
+      ),
+    [searchParams, selectedResultsWeekId, segments]
+  );
+
+  const setMatrixOrder = (order: MatrixOrder) => setParam('order', order);
+
+  const matrixStandings = useMemo(
+    () =>
+      computeStandings(leagueProfiles, allPicks, {
+        weekId: selectedResultsWeekId || undefined,
+        within: matrixOrder.within
+      }),
+    [leagueProfiles, allPicks, selectedResultsWeekId, matrixOrder]
+  );
+
   // The member's saved sheet for this week, with results. Taken from allPicks
   // rather than currentPicks: the latter is the Picks screen's working copy and
   // can hold unsaved edits, which the pool will never score.
@@ -764,7 +788,9 @@ function App() {
                 onWeekSelect={setSelectedResultsWeekId}
                 isLocked={isResultsWeekLocked}
                 weekGames={resultsWeekGames}
-                leagueUsers={leagueUsers}
+                standings={matrixStandings}
+                order={matrixOrder}
+                onOrderChange={setMatrixOrder}
                 leaguePicks={resultsWeekPicks}
                 currentUserId={user?.id}
                 syncingScores={syncingScores}
