@@ -57,8 +57,8 @@ export function getSeasonSaturdays(
  * length as possible. When the count does not divide evenly the earlier
  * segments absorb the remainder, so sizes never differ by more than one.
  *
- * For 2026-27 this yields 28 Saturdays split 10 / 9 / 9:
- *   Segment 1  2026-10-03 → 2026-12-05
+ * For 2026-27 this yields 27 Saturdays split 9 / 9 / 9:
+ *   Segment 1  2026-10-10 → 2026-12-05
  *   Segment 2  2026-12-12 → 2027-02-06
  *   Segment 3  2027-02-13 → 2027-04-10
  */

@@ -36,7 +36,7 @@ describe('getSegments', () => {
     const segments = getSegments(SEASON_START, SEASON_END);
 
     expect(segments.map(s => [s.startDate, s.endDate, s.weekCount])).toEqual([
-      ['2026-10-03', '2026-12-05', 10],
+      ['2026-10-10', '2026-12-05', 9],
       ['2026-12-12', '2027-02-06', 9],
       ['2027-02-13', '2027-04-10', 9]
     ]);
@@ -75,7 +75,7 @@ describe('getSegments', () => {
 
 describe('getSegmentForDate', () => {
   it('is inclusive of both boundary Saturdays', () => {
-    expect(getSegmentForDate('2026-10-03')?.number).toBe(1); // first of seg 1
+    expect(getSegmentForDate('2026-10-10')?.number).toBe(1); // first of seg 1
     expect(getSegmentForDate('2026-12-05')?.number).toBe(1); // last of seg 1
     expect(getSegmentForDate('2026-12-12')?.number).toBe(2); // first of seg 2
     expect(getSegmentForDate('2027-02-06')?.number).toBe(2); // last of seg 2
@@ -85,6 +85,7 @@ describe('getSegmentForDate', () => {
 
   it('returns null outside the season', () => {
     expect(getSegmentForDate('2026-09-26')).toBeNull(); // preseason
+    expect(getSegmentForDate('2026-10-03')).toBeNull(); // opening week, outside the segments
     expect(getSegmentForDate('2027-04-17')).toBeNull(); // playoffs
   });
 });
