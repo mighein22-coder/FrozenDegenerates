@@ -375,3 +375,91 @@ Mirrors DegenNFL #22, #23 and #27 (its PR #26).
       with no `to` clause — so the anon key in the public bundle could read every
       member's email and role.
 - [ ] Email notifications — Friday pick reminder and a post-week results mail.
+      (Phase 1D below covers the Friday reminder as a push notification.)
+
+### Mobile app
+
+Two phases. **Phase 1 is an installable PWA; after it ships we pause and get
+member feedback before deciding on Phase 2** (Capacitor store apps). The
+desktop/laptop layout must not change: every mobile change sits below the `md`
+breakpoint.
+
+**Phase 1 — PWA**
+
+*1A. Foundation*
+- [ ] Move Tailwind from the CDN `<script>` in `src/index.html` to build time
+      (`tailwindcss` + `@tailwindcss/vite`), carrying the theme config and the
+      `--c-*` variables over unchanged. Keep the pre-paint theme script inline.
+      The CDN won't work offline or in a native shell.
+- [ ] Self-host the Inter and Teko fonts (`@fontsource`) instead of Google Fonts.
+- [ ] Check there's no visual change in dark, light and print modes.
+
+*1B. Installable app*
+- [ ] Add `vite-plugin-pwa` with a manifest (name "IcePick", `display:
+      standalone`, slate-900 theme color, `start_url: /`).
+- [ ] Icons: 192, 512, maskable, and a 180 `apple-touch-icon` in `src/public/`.
+- [ ] Add iOS meta tags (`apple-mobile-web-app-capable`, status-bar style,
+      `viewport-fit=cover`).
+- [ ] Service worker: precache the app shell, use network-first for Supabase
+      and `/.netlify/functions/*`, and never cache auth. Add a "New version –
+      reload" prompt.
+- [ ] Offline banner. Picks submission stays online-only.
+- [ ] One-time "Add to Home Screen" hint for iOS Safari.
+
+*1C. Mobile-first UI*
+- [ ] Bottom tab bar below `md` (Dashboard, Picks, Standings, Results, More).
+      `Sidebar.tsx` stays on desktop.
+- [ ] Safe-area insets for the notch and home bar.
+- [ ] PicksView / GameCard: full-width cards, 44px+ tap targets, a confidence
+      picker that works by thumb, and a sticky Submit button.
+- [ ] League Matrix: a sticky first column with horizontal scroll, plus a
+      compact "my row" view on phones.
+- [ ] Check Standings, Dashboard, History, Admin, Settings and Login at 375px.
+      Fix overflow and set mobile keyboard types on inputs.
+- [ ] Refresh control on data views.
+- [ ] Confirm the session persists so members stay signed in.
+
+*1D. Push reminders*
+- [ ] Migration: `push_subscriptions` (user_id, endpoint, keys, created_at)
+      with RLS limited to own rows.
+- [ ] VAPID keys → Netlify env `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
+      `VITE_VAPID_PUBLIC_KEY`.
+- [ ] Settings toggle "Remind me to make picks" (off by default; on iOS only
+      once installed).
+- [ ] Scheduled function `pick-reminders` (`web-push`), Friday evening and
+      Saturday morning ET, for members with no sheet for the open week.
+      Optional "results are final" push from `scheduled-sync`.
+- [ ] Prune subscriptions that return 404/410.
+
+*1E. Ship and verify*
+- [ ] Desktop regression check: every screen side by side with production on a
+      laptop (Chrome, Edge, Safari; dark, light, print).
+- [ ] `npm run build`, `npm test`, and a Lighthouse installability check on a
+      deploy preview.
+- [ ] Real devices: iPhone (Add to Home Screen, login, picks, reminder) and
+      Android (install prompt, push).
+- [ ] Update `docs/OPERATIONS.md` (VAPID keys, reminder schedule).
+- [ ] Send members install instructions.
+
+**⏸ Pause — member feedback.** Are people installing it, does push arrive
+(especially on iOS), and what feels clunky? Go / no-go on Phase 2.
+
+**Phase 2 — Capacitor store apps (only if approved)**
+- [ ] Setup: `@capacitor/core` + `cli`, `cap init` (webDir `dist`), and
+      add the android and ios platforms. iOS needs a Mac with Xcode or a cloud
+      build service.
+- [ ] Absolute API URLs (the app runs from `capacitor://localhost`), CORS on
+      Netlify functions, Supabase redirect allow-list. No service worker inside
+      the shell.
+- [ ] Deep links (Universal Links / App Links served from Netlify) routed
+      into `lib/authRedirect.ts` for confirm, recovery and invite links.
+- [ ] Native push (`@capacitor/push-notifications`, FCM + APNs). Extend
+      `push_subscriptions` with platform + token, and `pick-reminders` sends
+      through FCM.
+- [ ] Splash screen, status bar theming, icons (`@capacitor/assets`), and the
+      session stored in `@capacitor/preferences`.
+- [ ] Printing: hide it or route it through the share sheet (`PrintButton.tsx`).
+- [ ] Store accounts (Apple $99/yr, Google $25), privacy policy, listings,
+      screenshots, and a reviewer demo account.
+- [ ] TestFlight + Play internal testing with members, then publish. Document
+      the release steps in `docs/OPERATIONS.md`.
