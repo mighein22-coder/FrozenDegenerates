@@ -2,6 +2,8 @@
 // supabase-js initializes and erases the fragment. See lib/authRedirect.ts.
 import './lib/authRedirect';
 
+import './index.css';
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';

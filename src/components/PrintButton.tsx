@@ -10,7 +10,7 @@ import { Button } from './Button';
  * PDF. A web page cannot skip the preview or call the Windows dialog directly,
  * so there is nothing more native to reach for. What lands on the paper is
  * decided by the `print:` utilities on each screen and the print block in
- * index.html.
+ * index.css.
  *
  * It hides itself on paper, so no call site has to remember to.
  */

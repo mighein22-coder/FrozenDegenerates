@@ -3,7 +3,7 @@
  *
  * The choice is per browser (localStorage), not per account: it has to apply
  * on the login screen, before anyone is signed in, and it needs no schema
- * change. The palettes themselves live in index.html as CSS variables keyed on
+ * change. The palettes themselves live in index.css as CSS variables keyed on
  * `<html data-theme>`; this module only decides which one is active.
  *
  * index.html carries an inline copy of `resolveTheme` that runs before first

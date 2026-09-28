@@ -387,12 +387,22 @@ breakpoint.
 **Phase 1 — PWA**
 
 *1A. Foundation*
-- [ ] Move Tailwind from the CDN `<script>` in `src/index.html` to build time
-      (`tailwindcss` + `@tailwindcss/vite`), carrying the theme config and the
-      `--c-*` variables over unchanged. Keep the pre-paint theme script inline.
-      The CDN won't work offline or in a native shell.
-- [ ] Self-host the Inter and Teko fonts (`@fontsource`) instead of Google Fonts.
-- [ ] Check there's no visual change in dark, light and print modes.
+- [x] ✅ Tailwind moved from the CDN `<script>` to build time. Used
+      **Tailwind v3 + PostCSS** rather than the planned v4 plugin: the CDN
+      served v3, and v4 changes several defaults (border color, ring width,
+      shadow scale), which would have shifted the desktop look. Theme config is
+      now `src/tailwind.config.js`; the `--c-*` variables, scrollbar and print
+      rules are `src/index.css`. The pre-paint theme script stays inline in
+      `index.html`.
+- [x] ✅ Inter and Teko self-hosted via `@fontsource` (imported in `index.css`).
+- [x] ✅ No visual change. Checked the old CDN build against the new one:
+      computed styles for all 1,048 class-like tokens in the source match (the
+      only difference is a dropped `-webkit-text-decoration-color` vendor
+      prefix in `transition-colors`), and the login page's layout, colors and
+      fonts are identical at 1366px in both dark and light. All 101
+      hover/focus/print/md/lg variant classes are in the bundle, as are the
+      `@page matrix` and `print-picked` rules. Signed-in screens still get
+      the eyeball check in 1E.
 
 *1B. Installable app*
 - [ ] Add `vite-plugin-pwa` with a manifest (name "IcePick", `display:

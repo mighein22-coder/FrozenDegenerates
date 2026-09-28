@@ -1,0 +1,126 @@
+/* Fonts are bundled with the app rather than fetched from Google Fonts, so the
+   installed app renders correctly offline and inside a native shell. */
+@import '@fontsource/inter/300.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/inter/800.css';
+@import '@fontsource/teko/500.css';
+@import '@fontsource/teko/600.css';
+@import '@fontsource/teko/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark (default): Tailwind's own values, so the dark app is unchanged. */
+:root {
+  color-scheme: dark;
+  --c-white: 255 255 255;
+  --c-slate-50: 248 250 252;  --c-slate-100: 241 245 249; --c-slate-200: 226 232 240;
+  --c-slate-300: 203 213 225; --c-slate-400: 148 163 184; --c-slate-500: 100 116 139;
+  --c-slate-600: 71 85 105;   --c-slate-700: 51 65 85;    --c-slate-800: 30 41 59;
+  --c-slate-900: 15 23 42;    --c-slate-950: 2 6 23;
+  --c-ice-50: 240 249 255;  --c-ice-100: 224 242 254; --c-ice-200: 186 230 253;
+  --c-ice-300: 125 211 252; --c-ice-400: 56 189 248;  --c-ice-500: 14 165 233;
+  --c-ice-600: 2 132 199;   --c-ice-700: 3 105 161;   --c-ice-800: 7 89 133;
+  --c-ice-900: 12 74 110;
+  --c-red-100: 254 226 226; --c-red-200: 254 202 202; --c-red-300: 252 165 165;
+  --c-red-400: 248 113 113; --c-red-500: 239 68 68;   --c-red-600: 220 38 38;
+  --c-red-900: 127 29 29;
+  --c-green-300: 134 239 172; --c-green-400: 74 222 128; --c-green-500: 34 197 94;
+  --c-green-900: 20 83 45;
+  --c-blue-300: 147 197 253; --c-blue-500: 59 130 246; --c-blue-900: 30 58 138;
+  --c-yellow-300: 253 224 71; --c-yellow-500: 234 179 8; --c-yellow-900: 113 63 18;
+  --c-purple-300: 216 180 254; --c-purple-900: 88 28 135;
+  --c-orange-500: 249 115 22;
+  --c-amber-400: 251 191 36;
+}
+
+/* Light: a fresh sheet. Pale blue-white ice for the page, white boards
+   for cards, jersey navy for text, blue-line blue for accents and
+   goal-light red for losses and errors. Each shade keeps the *role* it
+   has in dark mode (slate-900 is a card, slate-400 is secondary text,
+   ice-400 is accent text, ice-600 is a filled button), so the views
+   need no light-specific classes. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --c-white: 11 29 51;
+  --c-slate-50: 10 22 36;     --c-slate-100: 17 29 46;    --c-slate-200: 26 42 63;
+  --c-slate-300: 42 58 80;    --c-slate-400: 63 80 104;   --c-slate-500: 90 108 130;
+  --c-slate-600: 127 146 168; --c-slate-700: 194 207 220; --c-slate-800: 220 229 238;
+  --c-slate-900: 255 255 255; --c-slate-950: 234 241 247;
+  --c-ice-50: 6 40 77;      --c-ice-100: 7 48 92;     --c-ice-200: 8 58 110;
+  --c-ice-300: 10 74 140;   --c-ice-400: 11 92 173;   --c-ice-500: 22 104 187;
+  --c-ice-600: 13 90 167;   --c-ice-700: 10 74 140;   --c-ice-800: 141 187 232;
+  --c-ice-900: 179 211 241;
+  --c-red-100: 92 10 20;    --c-red-200: 122 14 28;   --c-red-300: 150 16 36;
+  --c-red-400: 176 13 40;   --c-red-500: 212 42 69;   --c-red-600: 200 16 46;
+  --c-red-900: 248 200 208;
+  --c-green-300: 14 99 52;  --c-green-400: 18 112 54; --c-green-500: 22 163 74;
+  --c-green-900: 196 234 210;
+  --c-blue-300: 29 78 216;  --c-blue-500: 59 130 246; --c-blue-900: 191 211 251;
+  --c-yellow-300: 133 77 14; --c-yellow-500: 161 98 7; --c-yellow-900: 245 220 140;
+  --c-purple-300: 107 33 168; --c-purple-900: 220 200 245;
+  --c-orange-500: 194 65 12;
+  --c-amber-400: 180 83 9;
+}
+
+body {
+  background-color: rgb(var(--c-slate-900));
+  color: rgb(var(--c-slate-50));
+}
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgb(var(--c-slate-800));
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-ice-400));
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--c-ice-500));
+}
+
+/* Paper. The palette itself is handled by printInLightTheme() in
+   lib/theme.ts, which switches to the light theme for the length of the
+   print; what is shown or hidden is decided by the `print:` utilities on
+   each screen. This block only holds what a utility cannot say. */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  /* The League Matrix is a player-by-game grid up to sixteen games wide
+     and does not fit portrait. A named page is the only way to ask for
+     landscape on one screen and not another; a browser without named
+     pages prints portrait, which squeezes rather than fails. */
+  @page matrix {
+    size: landscape;
+  }
+  .print-landscape {
+    page: matrix;
+  }
+
+  /* The one place a background is forced onto paper. On the pick sheet
+     the fill says "this is the side I took", and browsers drop
+     backgrounds unless the member ticks "Background graphics" — a
+     setting nobody should need to know about. The printed tick carries
+     the same fact for a printer that eats the fill. -webkit- first: it is
+     what older Chrome and every Safari honour. */
+  .print-picked {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background-color: rgb(var(--c-ice-900) / 0.6) !important;
+  }
+
+  /* Nothing on paper is clicked; a hover or fade caught mid-print is noise. */
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
