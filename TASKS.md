@@ -405,16 +405,35 @@ breakpoint.
       the eyeball check in 1E.
 
 *1B. Installable app*
-- [ ] Add `vite-plugin-pwa` with a manifest (name "IcePick", `display:
-      standalone`, slate-900 theme color, `start_url: /`).
-- [ ] Icons: 192, 512, maskable, and a 180 `apple-touch-icon` in `src/public/`.
-- [ ] Add iOS meta tags (`apple-mobile-web-app-capable`, status-bar style,
-      `viewport-fit=cover`).
-- [ ] Service worker: precache the app shell, use network-first for Supabase
-      and `/.netlify/functions/*`, and never cache auth. Add a "New version –
-      reload" prompt.
-- [ ] Offline banner. Picks submission stays online-only.
-- [ ] One-time "Add to Home Screen" hint for iOS Safari.
+- [x] ✅ `vite-plugin-pwa` with a manifest (name "IcePick - NHL League",
+      `display: standalone`, slate-900 theme color, `start_url: /`).
+- [x] ✅ Icons: 192, 512, maskable 512, 180 `apple-touch-icon` and a favicon in
+      `src/public/`. A placeholder hockey puck on the app's navy; redraw with
+      `python src/scripts/make-icons.py` (or swap the PNGs) if you want a
+      different mark.
+- [x] ✅ iOS meta tags (`apple-mobile-web-app-capable`, title, status bar).
+      **Deferred to 1C:** `viewport-fit=cover` and `black-translucent`. Both run
+      the page under the notch and home bar, so they only go in together with
+      the safe-area padding on the fixed bottom nav. Until then the status bar
+      is plain black and the layout is unchanged.
+- [x] ✅ Service worker: precaches the app shell and Latin fonts (27 files,
+      ~1.1 MB), serves the shell for deep links offline. Supabase and
+      `/.netlify/functions/*` are **network-only, not network-first** — a cached
+      standings or sheet could show a member something other than what was
+      saved, and auth responses must never be stored. `sw.js` and the manifest
+      are served `no-cache` (`netlify.toml`) so updates are noticed.
+- [x] ✅ "A new version of IcePick is ready — Reload" prompt (`registerType:
+      'prompt'`, so an update never lands mid-pick and discards an unsaved
+      sheet). Rechecks hourly for phones that keep the app open for days.
+- [x] ✅ Offline banner. Picks submission stays online-only. Limit: it keys off
+      the browser's online flag, so a connected-but-no-internet network
+      (captive portal) shows no banner.
+- [x] ✅ One-time "Add to Home Screen" hint for iOS Safari (iPhone and iPad),
+      dismissable, hidden once installed. Logic and tests in `lib/pwa.ts`.
+- [x] ✅ Verified in real Chrome (headless): service worker activates, no
+      installability errors, manifest parses, a deep link loads offline from
+      the cache, the update prompt appears on a new deploy and waits until
+      Reload, no page errors. Not yet tried on a real phone (1E).
 
 *1C. Mobile-first UI*
 - [ ] Bottom tab bar below `md` (Dashboard, Picks, Standings, Results, More).
