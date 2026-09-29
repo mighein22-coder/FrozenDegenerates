@@ -36,7 +36,7 @@ specific week of the matrix or a specific segment of the standings.
 
 ## Tech stack
 
-- **Frontend** — React 19, TypeScript, Vite. Tailwind via CDN; there is no CSS build step.
+- **Frontend** — React 19, TypeScript, Vite. Tailwind v3 compiled at build time (`src/index.css`, `src/tailwind.config.js`), fonts bundled.
 - **Backend** — Supabase (Postgres + Auth), accessed directly from the browser under Row Level Security.
 - **Serverless** — Netlify Functions for the NHL API proxy and server-side score sync.
 - **Hosting** — Netlify.

@@ -5,7 +5,9 @@ How IcePick runs in production, and what to do when something needs attention.
 ## Shape of the system
 
 - **Frontend** — React + Vite in `src/`, built to `src/dist`, served by Netlify.
-  Tailwind comes from a CDN `<script>` in `src/index.html`; there is no CSS build.
+  Tailwind (v3) is compiled at build time from `src/index.css` and
+  `src/tailwind.config.js`; the Inter and Teko fonts are bundled via `@fontsource`.
+  Nothing is loaded from a CDN, so the app renders offline.
 - **Backend** — Supabase (Postgres + Auth). The browser talks to it directly with
   the anon key, under Row Level Security.
 - **Serverless** — Netlify Functions in `netlify/functions/`, with their own

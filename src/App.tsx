@@ -690,7 +690,7 @@ function App() {
       <Sidebar onLogout={handleLogout} isAdmin={isAdmin} />
 
       {/* On paper there is no sidebar to clear and no bottom nav to pad for,
-          and the page margins come from @page in index.html. */}
+          and the page margins come from @page in index.css. */}
       <main className="flex-1 md:ml-20 lg:ml-64 p-4 lg:p-10 pb-24 md:pb-4 lg:pb-10 max-w-7xl mx-auto w-full print:!m-0 print:!p-0 print:max-w-none">
         {/* Data Load Error Banner */}
         {loadError && (

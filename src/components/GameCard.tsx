@@ -22,7 +22,7 @@ interface GameCardProps {
  *
  * On paper the card never splits across a page break, and every control
  * becomes the value it holds: the picked side carries a printed tick (and the
- * one forced background fill, `print-picked` in index.html), the confidence
+ * one forced background fill, `print-picked` in index.css), the confidence
  * buttons print as "4 pts", and a game with no pick says so rather than
  * leaving a gap that reads the same as a forgotten one.
  */

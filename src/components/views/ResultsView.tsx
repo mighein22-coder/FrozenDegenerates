@@ -73,7 +73,7 @@ const TEAM_TEXT_CLASS: Record<'win' | 'loss' | 'pending', string> = {
  * Results view - League-wide pick matrix
  *
  * ON PAPER it is always the grid, on a landscape page (`print-landscape`,
- * index.html). The mobile card list is printed out of existence explicitly
+ * index.css). The mobile card list is printed out of existence explicitly
  * rather than left to the md breakpoint, which a printed page meets in
  * landscape but not portrait. Three screen devices are undone for print: the
  * horizontal scroller (a printer cannot scroll, and a table inside `overflow`
