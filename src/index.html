@@ -2,8 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- No viewport-fit=cover yet: that runs the page under the notch and home
+         bar, which needs safe-area padding on the fixed nav first (mobile 1C). -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IcePick - NHL League</title>
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="description" content="IcePick: the NHL Saturday pick'em pool." />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png" />
+    <!-- iOS ignores the manifest for most of this, so it needs its own tags. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="IcePick" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <script>
       // Apply the saved theme before first paint, so a light-mode member does
       // not see a flash of the dark palette. Mirrors resolveTheme() in

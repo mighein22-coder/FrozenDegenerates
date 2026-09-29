@@ -7,7 +7,11 @@ How IcePick runs in production, and what to do when something needs attention.
 - **Frontend** — React + Vite in `src/`, built to `src/dist`, served by Netlify.
   Tailwind (v3) is compiled at build time from `src/index.css` and
   `src/tailwind.config.js`; the Inter and Teko fonts are bundled via `@fontsource`.
-  Nothing is loaded from a CDN, so the app renders offline.
+  Nothing is loaded from a CDN, so the app renders offline. It is an installable
+  PWA (`vite-plugin-pwa`): the service worker precaches the app shell only;
+  Supabase and function calls are never cached. `sw.js` is served `no-cache`
+  (`netlify.toml`); when you deploy, installed copies show a "new version,
+  Reload" notice rather than swapping silently.
 - **Backend** — Supabase (Postgres + Auth). The browser talks to it directly with
   the anon key, under Row Level Security.
 - **Serverless** — Netlify Functions in `netlify/functions/`, with their own

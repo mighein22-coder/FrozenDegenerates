@@ -8,6 +8,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import { PwaNotices } from './components/layout/PwaNotices';
 import { printInLightTheme, watchSystemTheme } from './lib/theme';
 
 // index.html has already applied the saved theme; this keeps "System" live.
@@ -26,6 +27,7 @@ root.render(
     {/* History-API routing; netlify.toml already serves index.html for any path */}
     <BrowserRouter>
       <App />
+      <PwaNotices />
     </BrowserRouter>
   </React.StrictMode>
 );
