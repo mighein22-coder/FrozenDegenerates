@@ -149,7 +149,7 @@ export const InvitesPanel: React.FC = () => {
         <button
           onClick={load}
           disabled={loading}
-          className="text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+          className="p-3 -m-3 md:p-0 md:m-0 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
           title="Refresh"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -203,7 +203,7 @@ export const InvitesPanel: React.FC = () => {
         <button
           type="submit"
           disabled={minting}
-          className="px-4 py-2 bg-ice-600 hover:bg-ice-700 disabled:opacity-50 text-onaccent rounded-lg text-sm font-medium transition-colors"
+          className="px-4 py-2 min-h-11 md:min-h-0 bg-ice-600 hover:bg-ice-700 disabled:opacity-50 text-onaccent rounded-lg text-sm font-medium transition-colors"
         >
           {minting ? 'Minting...' : 'Mint invite code'}
         </button>
@@ -220,7 +220,7 @@ export const InvitesPanel: React.FC = () => {
             </code>
             <button
               onClick={handleCopy}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="p-3 -m-3 md:p-0 md:m-0 text-slate-400 hover:text-white transition-colors"
               title="Copy code"
             >
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
@@ -280,7 +280,7 @@ export const InvitesPanel: React.FC = () => {
                         <button
                           onClick={() => handleRevoke(invite.code)}
                           disabled={revoking === invite.code}
-                          className="text-xs text-red-400 hover:text-red-300 underline disabled:opacity-50"
+                          className="p-3 -m-3 md:p-0 md:m-0 text-xs text-red-400 hover:text-red-300 underline disabled:opacity-50"
                         >
                           {revoking === invite.code ? 'Revoking…' : 'Revoke'}
                         </button>

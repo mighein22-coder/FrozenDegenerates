@@ -40,7 +40,7 @@ export const PwaNotices: React.FC = () => {
   if (online && !needRefresh && !showIosHint) return null;
 
   return (
-    <div className="fixed z-40 left-3 right-3 bottom-[4.5rem] md:left-auto md:right-4 md:bottom-4 md:w-96 flex flex-col gap-2 print:hidden">
+    <div className="fixed z-40 left-3 right-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:left-auto md:right-4 md:bottom-4 md:w-96 flex flex-col gap-2 print:hidden">
       {!online && (
         <div
           role="status"

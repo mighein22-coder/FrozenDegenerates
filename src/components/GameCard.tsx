@@ -183,7 +183,7 @@ export const GameCard: React.FC<GameCardProps> = ({
                             onClick={(e) => { e.stopPropagation(); onSetConfidence(game.id, val); }}
                             disabled={disabled || isUsed}
                             className={`
-                                h-7 flex-1 rounded text-xs font-bold transition-all duration-200
+                                h-11 md:h-7 flex-1 rounded text-sm md:text-xs font-bold transition-all duration-200
                                 ${isActive 
                                     ? 'bg-ice-500 text-onaccent shadow-sm' 
                                     : isUsed 

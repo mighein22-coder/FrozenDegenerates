@@ -194,7 +194,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                     disabled={unavailable}
                     onClick={() => onOrderChange(value)}
                     title={unavailable ? 'This week is outside the season segments' : undefined}
-                    className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                    className={`px-3 py-1 min-h-10 md:min-h-0 flex items-center md:block rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                       isActive
                         ? 'bg-ice-600 text-onaccent'
                         : 'text-slate-400 enabled:hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed'
@@ -212,7 +212,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
             <select
               value={selectedWeekId}
               onChange={(e) => onWeekSelect(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-ice-500 print:hidden"
+              className="min-h-11 md:min-h-0 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-ice-500 print:hidden"
             >
               {availableWeeks.map(week => (
                 <option key={week.id} value={week.id}>

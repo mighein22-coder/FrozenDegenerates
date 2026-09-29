@@ -436,17 +436,42 @@ breakpoint.
       Reload, no page errors. Not yet tried on a real phone (1E).
 
 *1C. Mobile-first UI*
-- [ ] Bottom tab bar below `md` (Dashboard, Picks, Standings, Results, More).
-      `Sidebar.tsx` stays on desktop.
-- [ ] Safe-area insets for the notch and home bar.
-- [ ] PicksView / GameCard: full-width cards, 44px+ tap targets, a confidence
-      picker that works by thumb, and a sticky Submit button.
-- [ ] League Matrix: a sticky first column with horizontal scroll, plus a
-      compact "my row" view on phones.
-- [ ] Check Standings, Dashboard, History, Admin, Settings and Login at 375px.
-      Fix overflow and set mobile keyboard types on inputs.
-- [ ] Refresh control on data views.
-- [ ] Confirm the session persists so members stay signed in.
+
+Reviewed every screen at 320, 360, 375 and 412px in dark and light, mid-week
+(picks open) and Saturday evening (games live), against a fake backend (a
+Puppeteer harness serving made-up members, games and picks; nothing touches
+the real database). Standings, the Matrix (a card per member) and History
+already had good phone layouts and were left alone. Every change below is
+scoped to phones (below `md`, or `sm`), and a before/after box-by-box
+comparison at 1366px shows every laptop screen identical, dark and light.
+
+- [x] ✅ Bottom nav: nine tabs did not fit (labels ran together). Now four tabs
+      (Dashboard, Picks, Matrix, Standings) plus a **More** menu holding
+      Affinity, History, Settings, Admin and Sign Out. It closes on navigation,
+      Escape or a tap outside, and lights up when you are on a page inside it.
+      Which tabs are primary is a flag on the route (`primaryMobile`).
+- [x] ✅ Safe areas: `viewport-fit=cover` plus `env(safe-area-inset-*)` padding on
+      the nav, the page bottom and the update/offline notices, so nothing sits
+      under the iPhone home bar or the landscape notch. Status bar stays opaque
+      black (not `black-translucent`), so there is no top inset to manage and
+      light mode never gets white text on white. *Only checkable on a real
+      iPhone; Chrome reports zero insets.*
+- [x] ✅ Picks: confidence buttons 28px → 44px tall on phones (the most-tapped
+      control in the app). The header with the count and Submit was already
+      sticky, and the cards already full width.
+- [x] ✅ Dashboard: the Top 5 table was cut off at the right edge (a long name
+      widened it), and on Saturday evening the whole page scrolled sideways
+      (the grid had no column template on phones). Both fixed.
+- [x] ✅ Admin: the Week Status table dropped its Week column on phones (it is
+      "week-" + the Date column) so the Action button is no longer clipped.
+- [x] ✅ Tap targets: every button, pill and select is now at least 40px tall on
+      phones (Segment and Order-by pills, Print, Sync, Mint invite, week select,
+      icon buttons get a larger hit area without moving).
+- [ ] Left for real-device feedback rather than guessed at: a compact "my row
+      first" view of the Matrix, and pull-to-refresh / a refresh control.
+      The Matrix card list is long (one card per member) but works.
+- [x] ✅ Session persistence: unchanged. supabase-js already persists and
+      refreshes the session, and the installed app keeps it in its own storage.
 
 *1D. Push reminders*
 - [ ] Migration: `push_subscriptions` (user_id, endpoint, keys, created_at)

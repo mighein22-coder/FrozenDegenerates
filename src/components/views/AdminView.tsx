@@ -129,10 +129,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ allWeeks, leagueUsers }) =
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-700">
-                <th className="text-left px-4 py-2 text-slate-400 font-medium">Week</th>
-                <th className="text-left px-4 py-2 text-slate-400 font-medium">Date</th>
-                <th className="text-left px-4 py-2 text-slate-400 font-medium">Current Status</th>
-                <th className="text-right px-4 py-2 text-slate-400 font-medium">Action</th>
+                {/* The week id is "week-" + the date, so on a phone the Date column
+                    says everything and the id is dropped to make the row fit. */}
+                <th className="hidden sm:table-cell text-left px-4 py-2 text-slate-400 font-medium">Week</th>
+                <th className="text-left px-2 sm:px-4 py-2 text-slate-400 font-medium">Date</th>
+                <th className="text-left px-2 sm:px-4 py-2 text-slate-400 font-medium"><span className="sm:hidden">Status</span><span className="hidden sm:inline">Current Status</span></th>
+                <th className="text-right px-2 sm:px-4 py-2 text-slate-400 font-medium">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -141,9 +143,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ allWeeks, leagueUsers }) =
                   week.status === 'OPEN' ? 'LOCKED' : week.status === 'LOCKED' ? 'COMPLETED' : 'OPEN';
                 return (
                   <tr key={week.id} className="border-b border-slate-800 hover:bg-slate-800/30">
-                    <td className="px-4 py-3 text-white font-mono text-xs">{week.id}</td>
-                    <td className="px-4 py-3 text-slate-300">{week.startDate}</td>
-                    <td className="px-4 py-3">
+                    <td className="hidden sm:table-cell px-4 py-3 text-white font-mono text-xs">{week.id}</td>
+                    <td className="px-2 sm:px-4 py-3 text-slate-300 whitespace-nowrap">{week.startDate}</td>
+                    <td className="px-2 sm:px-4 py-3">
                       <span
                         className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                           week.status === 'OPEN'
@@ -156,11 +158,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ allWeeks, leagueUsers }) =
                         {week.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-2 sm:px-4 py-3 text-right">
                       <button
                         onClick={() => handleToggleWeekStatus(week.id, week.status)}
                         disabled={weekStatusUpdating === week.id}
-                        className="px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-xs rounded transition-colors"
+                        className="px-3 py-1 min-h-10 md:min-h-0 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-xs rounded transition-colors"
                       >
                         {weekStatusUpdating === week.id ? 'Updating...' : `→ ${nextStatus}`}
                       </button>

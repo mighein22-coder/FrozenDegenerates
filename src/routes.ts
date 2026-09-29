@@ -23,14 +23,19 @@ export interface NavRoute {
   shortLabel: string;
   icon: LucideIcon;
   adminOnly?: boolean;
+  /**
+   * One of the few tabs shown in the phone bottom bar. Everything else goes
+   * behind its "More" button: nine tabs will not fit in 375px.
+   */
+  primaryMobile?: boolean;
 }
 
 export const NAV_ROUTES: NavRoute[] = [
-  { path: '/', label: 'Dashboard', shortLabel: 'Dashboard', icon: LayoutDashboard },
-  { path: '/picks', label: 'Saturday Picks', shortLabel: 'Picks', icon: Calendar },
-  { path: '/matrix', label: 'League Matrix', shortLabel: 'Matrix', icon: Grid3X3 },
+  { path: '/', label: 'Dashboard', shortLabel: 'Dashboard', icon: LayoutDashboard, primaryMobile: true },
+  { path: '/picks', label: 'Saturday Picks', shortLabel: 'Picks', icon: Calendar, primaryMobile: true },
+  { path: '/matrix', label: 'League Matrix', shortLabel: 'Matrix', icon: Grid3X3, primaryMobile: true },
   { path: '/affinity', label: 'Team Affinity', shortLabel: 'Affinity', icon: Heart },
-  { path: '/standings', label: 'Standings', shortLabel: 'Standings', icon: Trophy },
+  { path: '/standings', label: 'Standings', shortLabel: 'Standings', icon: Trophy, primaryMobile: true },
   { path: '/history', label: 'My History', shortLabel: 'History', icon: ClipboardList },
   { path: '/settings', label: 'Settings', shortLabel: 'Settings', icon: UserCog },
   { path: '/admin', label: 'Admin Panel', shortLabel: 'Admin', icon: Settings, adminOnly: true }
