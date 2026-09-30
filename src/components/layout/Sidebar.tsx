@@ -1,6 +1,6 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Ellipsis, LogOut } from 'lucide-react';
 import { NAV_ROUTES } from '../../routes';
 
 interface SidebarProps {
@@ -16,6 +16,22 @@ interface SidebarProps {
  */
 export const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin = false }) => {
   const navItems = NAV_ROUTES.filter(route => !route.adminOnly || isAdmin);
+  const primaryItems = navItems.filter(route => route.primaryMobile);
+  const moreItems = navItems.filter(route => !route.primaryMobile);
+
+  // The phone "More" menu closes on any navigation and on Escape, so it never
+  // sits open over the page it just took you to.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => setMoreOpen(false), [pathname]);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMoreOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [moreOpen]);
+  // "More" lights up when you are on a page that lives inside it.
+  const moreActive = moreItems.some(route => pathname === route.path || pathname.startsWith(route.path + '/'));
 
   return (
     <>
@@ -68,33 +84,77 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin = false }) =
         </div>
       </aside>
 
-      {/* Bottom nav — mobile only */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-800 flex items-center print:!hidden">
-        {navItems.map(({ path, icon: Icon, shortLabel }) => (
+      {/* Bottom nav — mobile only. Four tabs and a "More" button: nine tabs do
+          not fit in 375px, and labels ran into each other. The safe-area
+          padding keeps it clear of the iPhone home bar (and the notch, in
+          landscape) now that the page runs edge to edge. */}
+      {moreOpen && (
+        <div className="md:hidden fixed inset-0 z-50 print:!hidden" onClick={() => setMoreOpen(false)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            id="more-menu"
+            role="menu"
+            onClick={e => e.stopPropagation()}
+            className="absolute left-3 right-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-2xl"
+          >
+            {moreItems.map(({ path, icon: Icon, label }) => (
+              <NavLink
+                key={path}
+                to={path}
+                role="menuitem"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg px-4 min-h-12 text-base font-medium ${
+                    isActive ? 'bg-ice-500/10 text-ice-400' : 'text-slate-200 active:bg-slate-800'
+                  }`
+                }
+              >
+                <Icon size={20} />
+                {label}
+              </NavLink>
+            ))}
+            <div className="my-1 border-t border-slate-800" />
+            <button
+              role="menuitem"
+              onClick={onLogout}
+              className="flex w-full items-center gap-3 rounded-lg px-4 min-h-12 text-base font-medium text-slate-400 active:bg-slate-800"
+            >
+              <LogOut size={20} />
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-800 flex items-stretch pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] print:!hidden">
+        {primaryItems.map(({ path, icon: Icon, shortLabel }) => (
           <NavLink
             key={path}
             to={path}
             end={path === '/'}
             className={({ isActive }) =>
-              `flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
+              `flex-1 min-h-14 flex flex-col items-center justify-center gap-0.5 transition-colors ${
                 isActive ? 'text-ice-400' : 'text-slate-500'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <Icon size={18} className={isActive ? 'stroke-[2.5]' : ''} />
+                <Icon size={20} className={isActive ? 'stroke-[2.5]' : ''} />
                 <span className="text-[10px] font-medium">{shortLabel}</span>
               </>
             )}
           </NavLink>
         ))}
         <button
-          onClick={onLogout}
-          className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-slate-500 transition-colors"
+          onClick={() => setMoreOpen(open => !open)}
+          aria-expanded={moreOpen}
+          aria-controls="more-menu"
+          className={`flex-1 min-h-14 flex flex-col items-center justify-center gap-0.5 transition-colors ${
+            moreOpen || moreActive ? 'text-ice-400' : 'text-slate-500'
+          }`}
         >
-          <LogOut size={18} />
-          <span className="text-[10px] font-medium">Sign Out</span>
+          <Ellipsis size={20} className={moreActive ? 'stroke-[2.5]' : ''} />
+          <span className="text-[10px] font-medium">More</span>
         </button>
       </nav>
     </>

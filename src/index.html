@@ -2,9 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- No viewport-fit=cover yet: that runs the page under the notch and home
-         bar, which needs safe-area padding on the fixed nav first (mobile 1C). -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover runs the page edge to edge, under the home bar and
+         (in landscape) the notch. The fixed bottom nav and the page's bottom
+         padding add env(safe-area-inset-*) to stay clear of them. The status
+         bar below is opaque black rather than black-translucent, so nothing
+         needs a top inset, and light mode never gets white text on white. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>IcePick - NHL League</title>
     <meta name="theme-color" content="#0f172a" />
     <meta name="description" content="IcePick: the NHL Saturday pick'em pool." />

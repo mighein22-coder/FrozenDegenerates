@@ -86,7 +86,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </p>
       </header>
 
-      <div className="grid gap-6 md:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-5">
         <div className="md:col-span-3">
           <PicksPanel
             sheet={sheet}
@@ -351,7 +351,7 @@ const TopStandingsPanel: React.FC<{
             {row.rank}
           </span>
         </td>
-        <td className="py-2.5 pr-3">
+        <td className="py-2.5 pr-3 w-full max-w-0 sm:w-auto sm:max-w-none">
           <span
             className={`flex items-center gap-2.5 font-medium ${
               isMe ? 'text-ice-400' : 'text-slate-200'
