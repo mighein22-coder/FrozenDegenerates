@@ -93,6 +93,23 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## Done
 
+### Team Affinity redesign (issue #51, 2026-10-11)
+
+Replaces the top-3 ranking from #49 (PR #50, closed unmerged). Modelled on
+DegenNFL #31.
+
+- [x] **One member at a time, every team they have picked.** A member selector
+      (default: you) and a table per team: times picked, confidence total, W-L
+      and points earned. Picks from completed weeks only, as before.
+- [x] **Sort pills** — Times picked (default) / Confidence / Points, largest
+      first, team name breaking ties. Kept in the URL as `?user=` and `?sort=`;
+      an unknown `?user=` falls back to you.
+- [x] W-L and points come from each pick's stored `result` and `pointsEarned`,
+      the columns the standings sum, so this screen cannot disagree with them.
+      Logic and 15 tests are in `lib/affinity.ts`.
+- [x] Checked against mock data on desktop and at 360px, dark and light, and
+      with a member who has no picks. Not yet seen against real results.
+
 ### Standings order (issue #39, 2026-09-27)
 
 Mirrors DegenNFL #22, #23 and #27 (its PR #26).

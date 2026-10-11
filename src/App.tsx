@@ -23,6 +23,7 @@ import { PicksView } from './components/views/PicksView';
 import { StandingsView } from './components/views/StandingsView';
 import { ResultsView } from './components/views/ResultsView';
 import { TeamStatsView } from './components/views/TeamStatsView';
+import { parseAffinitySort, resolveAffinityUser } from './lib/affinity';
 import { MyHistoryView } from './components/views/MyHistoryView';
 import { AdminView } from './components/views/AdminView';
 import { SettingsView } from './components/views/SettingsView';
@@ -682,6 +683,15 @@ function App() {
     role: p.role
   }));
 
+  // Team Affinity: ?user=<id>&sort=picks|confidence|points. The member
+  // defaults to whoever is signed in.
+  const affinitySort = parseAffinitySort(searchParams.get('sort'));
+  const affinityUserId = resolveAffinityUser(
+    searchParams.get('user'),
+    leagueUsers.map(u => u.id),
+    user?.id
+  );
+
   const isAdmin = profile?.role === 'admin';
 
   // Main app
@@ -800,7 +810,16 @@ function App() {
 
           <Route
             path="/affinity"
-            element={<TeamStatsView leagueUsers={leagueUsers} allPicks={teamStatsPicks} />}
+            element={
+              <TeamStatsView
+                leagueUsers={leagueUsers}
+                allPicks={teamStatsPicks}
+                selectedUserId={affinityUserId}
+                sort={affinitySort}
+                onUserChange={id => setParam('user', id)}
+                onSortChange={sort => setParam('sort', sort)}
+              />
+            }
           />
 
           <Route
