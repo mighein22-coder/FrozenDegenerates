@@ -60,21 +60,32 @@ export function summarizeAffinity(picks: Pick[]): TeamAffinity[] {
   return [...byTeam.values()];
 }
 
-const SORT_KEY: Record<AffinitySort, (row: TeamAffinity) => number> = {
-  picks: row => row.count,
-  confidence: row => row.confidenceSum,
-  points: row => row.points
+/**
+ * The measures each sort compares, in order: the chosen one first, then the
+ * other two break its ties. Team name is the last resort.
+ */
+const SORT_KEYS: Record<AffinitySort, ((row: TeamAffinity) => number)[]> = {
+  picks: [row => row.count, row => row.confidenceSum, row => row.points],
+  confidence: [row => row.confidenceSum, row => row.count, row => row.points],
+  points: [row => row.points, row => row.confidenceSum, row => row.count]
 };
 
 /** The name a team is shown and tie-broken by; an unknown id sorts by itself. */
 const teamName = (id: string): string => TEAMS[id]?.name ?? id;
 
-/** Largest first on the chosen measure; team name breaks ties. Returns a new array. */
+/**
+ * Largest first on the chosen measure, then on the other two in the order
+ * `SORT_KEYS` gives, then by team name. Returns a new array.
+ */
 export function sortAffinity(rows: TeamAffinity[], sort: AffinitySort): TeamAffinity[] {
-  const key = SORT_KEY[sort];
-  return [...rows].sort(
-    (a, b) => key(b) - key(a) || teamName(a.id).localeCompare(teamName(b.id))
-  );
+  const keys = SORT_KEYS[sort];
+  return [...rows].sort((a, b) => {
+    for (const key of keys) {
+      const diff = key(b) - key(a);
+      if (diff !== 0) return diff;
+    }
+    return teamName(a.id).localeCompare(teamName(b.id));
+  });
 }
 
 /**

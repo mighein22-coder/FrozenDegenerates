@@ -102,11 +102,13 @@ DegenNFL #31.
       (default: you) and a table per team: times picked, confidence total, W-L
       and points earned. Picks from completed weeks only, as before.
 - [x] **Sort pills** — Times picked (default) / Confidence / Points, largest
-      first, team name breaking ties. Kept in the URL as `?user=` and `?sort=`;
+      first. Each breaks ties on the other two in a fixed order: Times picked →
+      confidence → points; Confidence → times picked → points; Points →
+      confidence → times picked. Team name settles anything still level. Kept in the URL as `?user=` and `?sort=`;
       an unknown `?user=` falls back to you.
 - [x] W-L and points come from each pick's stored `result` and `pointsEarned`,
       the columns the standings sum, so this screen cannot disagree with them.
-      Logic and 15 tests are in `lib/affinity.ts`.
+      Logic and 19 tests are in `lib/affinity.ts`.
 - [x] Checked against mock data on desktop and at 360px, dark and light, and
       with a member who has no picks. Not yet seen against real results.
 
