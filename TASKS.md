@@ -93,6 +93,15 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## Done
 
+### Team Affinity order (issue #49, 2026-10-11)
+
+- [x] **Top 3 teams now ranked by times picked, then confidence sum.** Both
+      descending, so of two teams picked equally often the one the member
+      backed harder wins the slot. Team id breaks any remaining tie so the
+      three shown are stable between renders. Logic is `topTeams` in
+      `lib/affinity.ts` (6 tests); `TeamStatsView` just calls it. Before, the
+      sort was count only, so ties fell to insertion order.
+
 ### Standings order (issue #39, 2026-09-27)
 
 Mirrors DegenNFL #22, #23 and #27 (its PR #26).

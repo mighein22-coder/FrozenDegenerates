@@ -2,6 +2,8 @@ import React, { useMemo } from 'react';
 import { MemberAvatar } from '../MemberAvatar';
 import type { User, Pick } from '../../types';
 import { TEAMS } from '../../constants';
+import { topTeams } from '../../lib/affinity';
+import type { TeamAffinity } from '../../lib/affinity';
 
 interface TeamStatsViewProps {
   leagueUsers: User[];
@@ -15,18 +17,7 @@ export const TeamStatsView: React.FC<TeamStatsViewProps> = ({ leagueUsers, allPi
   const userAffinities = useMemo(() => {
     return leagueUsers.map(user => {
       const userPicks = allPicks.filter(p => p.userId === user.id);
-      const teamCounts: Record<string, number> = {};
-
-      userPicks.forEach(p => {
-        teamCounts[p.selectedTeamId] = (teamCounts[p.selectedTeamId] || 0) + 1;
-      });
-
-      const sorted = Object.entries(teamCounts)
-        .map(([id, count]) => ({ id, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3);
-
-      return { ...user, topTeams: sorted };
+      return { ...user, topTeams: topTeams(userPicks) };
     });
   }, [leagueUsers, allPicks]);
 
@@ -59,7 +50,7 @@ export const TeamStatsView: React.FC<TeamStatsViewProps> = ({ leagueUsers, allPi
               </h4>
               {user.topTeams && user.topTeams.length > 0 ? (
                 <div className="grid grid-cols-3 gap-3">
-                  {user.topTeams.map((stat: { id: string; count: number }) => {
+                  {user.topTeams.map((stat: TeamAffinity) => {
                     const team = TEAMS[stat.id];
                     return (
                       <div
