@@ -468,3 +468,11 @@ The first run found two real defects that three careful readings had not:
 
 The two dashboard queries above remain the check against *production*, which a
 local replay can never stand in for. Run them after any migration work.
+
+## Queries
+
+`supabase/queries/` holds read-only SQL for the dashboard's SQL Editor. These
+are not migrations and change nothing.
+
+- `members_without_picks.sql` — members with fewer than 5 picks in the current
+  (earliest non-`COMPLETED`) week, with the Saturday noon ET deadline.
