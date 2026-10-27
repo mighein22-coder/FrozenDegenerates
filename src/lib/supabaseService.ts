@@ -1,6 +1,7 @@
 import { supabase, type Profile, type WeekRow, type GameRow, type PickRow, type InviteRow } from './supabase';
 import { getTargetSaturdayDate, arePicksLocked } from './timezone';
 import { clampToSeasonSaturday } from './segments';
+import { fetchAllRows } from './paging';
 import type { User, Week, Game, Pick, Invite, InviteClaim } from '../types';
 
 /**
@@ -202,33 +203,38 @@ export const supabaseService = {
   },
 
   /**
-   * Get all picks for a week (for results/standings)
+   * Get all picks for a week (for results/standings).
+   * Paged, since without a `weekId` this is the whole table.
    */
   async getAllPicks(weekId?: string): Promise<Pick[]> {
-    let query = supabase.from('picks').select('*');
-    if (weekId) query = query.eq('week_id', weekId);
-
-    const { data, error } = await query;
-    if (error) throw new Error(`Failed to get all picks: ${error.message}`);
-
-    return (data || []).map(mapPick);
+    try {
+      const rows = await fetchAllRows<PickRow>(() => {
+        let query = supabase.from('picks').select('*');
+        if (weekId) query = query.eq('week_id', weekId);
+        return query.order('id');
+      });
+      return rows.map(mapPick);
+    } catch (error) {
+      throw new Error(`Failed to get all picks: ${(error as Error).message}`);
+    }
   },
 
   /**
    * Get picks for several weeks in a single query.
    * Replaces per-week round-trips in the team-stats and history views.
+   * Paged: every completed week together passes the 1000-row API cap mid-season.
    */
   async getPicksForWeeks(weekIds: string[]): Promise<Pick[]> {
     if (weekIds.length === 0) return [];
 
-    const { data, error } = await supabase
-      .from('picks')
-      .select('*')
-      .in('week_id', weekIds);
-
-    if (error) throw new Error(`Failed to get picks: ${error.message}`);
-
-    return (data || []).map(mapPick);
+    try {
+      const rows = await fetchAllRows<PickRow>(() =>
+        supabase.from('picks').select('*').in('week_id', weekIds).order('id')
+      );
+      return rows.map(mapPick);
+    } catch (error) {
+      throw new Error(`Failed to get picks: ${(error as Error).message}`);
+    }
   },
 
   /**
@@ -295,23 +301,26 @@ export const supabaseService = {
    * season standings and each segment's standings from a single fetch — the
    * segment selector then switches scope with no round-trip. Build the table
    * with `computeStandings` from `lib/standings.ts`.
+   *
+   * Picks are the whole table, so they're paged past the 1000-row API cap.
    */
   async getStandingsInputs(): Promise<{ profiles: Profile[]; picks: Pick[] }> {
-    const [profilesResult, picksResult] = await Promise.all([
+    const [profilesResult, pickRows] = await Promise.all([
       supabase.from('profiles').select('*'),
-      supabase.from('picks').select('*')
+      fetchAllRows<PickRow>(() => supabase.from('picks').select('*').order('id')).catch(
+        (error: Error) => {
+          throw new Error(`Failed to get picks: ${error.message}`);
+        }
+      )
     ]);
 
     if (profilesResult.error) {
       throw new Error(`Failed to get profiles: ${profilesResult.error.message}`);
     }
-    if (picksResult.error) {
-      throw new Error(`Failed to get picks: ${picksResult.error.message}`);
-    }
 
     return {
       profiles: profilesResult.data ?? [],
-      picks: (picksResult.data ?? []).map(mapPick)
+      picks: pickRows.map(mapPick)
     };
   },
 
