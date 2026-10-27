@@ -93,6 +93,21 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## Done
 
+### Page picks reads past the 1000-row API cap (2026-10-27)
+
+Preventive, ported from DegenNFL #47. Supabase stops a select at 1000 rows
+with no error. Nothing is broken yet; at 5 picks per member per Saturday the
+table passes 1000 rows around week 25 with 8 members, week 20 with 10, week 14
+with 15. Past that, Standings, the Dashboard, the Matrix, Team Affinity and My
+History would quietly drop the newest picks. `select count(*) from picks;`
+shows how close the table is.
+
+- [x] `fetchAllRows` in `lib/paging.ts` reads in 1000-row `.range()` pages,
+      ordered by `id`, until a short page. 5 tests.
+- [x] Used by `getStandingsInputs` (whole table), `getPicksForWeeks` (every
+      completed week) and `getAllPicks`. Return shapes are unchanged.
+- [x] No data cleanup needed: the cap only shortened reads, never writes.
+
 ### Team Affinity redesign (issue #51, 2026-10-11)
 
 Replaces the top-3 ranking from #49 (PR #50, closed unmerged). Modelled on
