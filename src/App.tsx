@@ -22,6 +22,7 @@ import { DashboardView } from './components/views/DashboardView';
 import { PicksView } from './components/views/PicksView';
 import { StandingsView } from './components/views/StandingsView';
 import { ResultsView } from './components/views/ResultsView';
+import { GamePicksView } from './components/views/GamePicksView';
 import { TeamStatsView } from './components/views/TeamStatsView';
 import { parseAffinitySort, resolveAffinityUser } from './lib/affinity';
 import { MyHistoryView } from './components/views/MyHistoryView';
@@ -264,9 +265,16 @@ function App() {
   const [resultsWeekGames, setResultsWeekGames] = useState<Game[]>([]);
   const [resultsWeekPicks, setResultsWeekPicks] = useState<Pick[]>([]);
   const [syncingScores, setSyncingScores] = useState(false);
+  // Which week the two arrays above hold, so Game Picks can tell 'still loading'
+  // from 'that game is not in this week'. The Matrix does not need it.
+  const [resultsWeekLoad, setResultsWeekLoad] = useState<{ weekId: string; failed: boolean } | null>(null);
+
+  // The Matrix and the pages under it share this data, so moving between them
+  // must not reload it: the effect keys on this rather than on `path`.
+  const onMatrix = path === '/matrix' || path.startsWith('/matrix/');
 
   useEffect(() => {
-    if (path !== '/matrix' || !selectedResultsWeekId) return;
+    if (!onMatrix || !selectedResultsWeekId) return;
 
     const loadResultsData = async () => {
       try {
@@ -294,14 +302,16 @@ function App() {
         setResultsWeekGames(games);
         setResultsWeekPicks(picks);
         setAllPicks(inputs.picks);
+        setResultsWeekLoad({ weekId: selectedResultsWeekId, failed: false });
       } catch (error) {
         console.error('Error loading results data:', error);
         setSyncingScores(false);
+        setResultsWeekLoad({ weekId: selectedResultsWeekId, failed: true });
       }
     };
 
     loadResultsData();
-  }, [path, selectedResultsWeekId, allWeeks]);
+  }, [onMatrix, selectedResultsWeekId, allWeeks]);
 
   // Load picks from completed weeks only for team stats view
   const [teamStatsPicks, setTeamStatsPicks] = useState<Pick[]>([]);
@@ -804,6 +814,23 @@ function App() {
                 leaguePicks={resultsWeekPicks}
                 currentUserId={user?.id}
                 syncingScores={syncingScores}
+              />
+            }
+          />
+
+          <Route
+            path="/matrix/game/:gameId?"
+            element={
+              <GamePicksView
+                selectedWeekId={selectedResultsWeekId}
+                availableWeeks={availableResultsWeeks}
+                isLocked={isResultsWeekLocked}
+                weekGames={resultsWeekGames}
+                leaguePicks={resultsWeekPicks}
+                members={leagueProfiles}
+                currentUserId={user?.id}
+                loading={resultsWeekLoad?.weekId !== selectedResultsWeekId}
+                loadFailed={resultsWeekLoad?.weekId === selectedResultsWeekId && resultsWeekLoad.failed}
               />
             }
           />

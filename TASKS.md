@@ -93,6 +93,19 @@ Operational detail lives in `docs/OPERATIONS.md`.
 
 ## Done
 
+### Game Picks screen (issue #54, 2026-11-06)
+
+Ported from DegenNFL #44. `/matrix/game/:gameId?week=` shows who took each side
+of a game, the confidence on each, and who made no pick. It sits under the
+Matrix rather than in the menu: game headers on the grid, game labels on the
+phone cards and a **Game picks** button link to it, and it shares the Matrix's
+loaded data, so no new query or migration.
+
+The NFL rule did not carry over. There a game opens at its own kickoff; here
+`picks_revealed` opens a whole week at Saturday noon ET, so every game in a week
+opens together. Before that they are greyed with when they open, and a direct
+link says so.
+
 ### Page picks reads past the 1000-row API cap (2026-10-27)
 
 Preventive, ported from DegenNFL #47. Supabase stops a select at 1000 rows
