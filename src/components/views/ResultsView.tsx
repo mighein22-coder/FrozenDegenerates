@@ -1,9 +1,11 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { MemberAvatar } from '../MemberAvatar';
 import { PrintButton } from '../PrintButton';
 import { Lock, ShieldAlert, Clock, RefreshCw } from 'lucide-react';
 import { FULL_SEASON_LABEL } from '../../constants';
 import { MATRIX_ORDERS, type MatrixOrder, type ResolvedMatrixOrder } from '../../lib/matrixOrder';
+import { gamePicksPath } from '../../lib/gamePicks';
 import type { Game, Pick, StandingsRow, Week } from '../../types';
 
 interface ResultsViewProps {
@@ -104,6 +106,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   currentUserId,
   syncingScores = false
 }) => {
+  const { search } = useLocation();
+
   // Handle case where no weeks are available yet
   if (availableWeeks.length === 0) {
     return (
@@ -173,6 +177,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-3 lg:gap-4">
           <PrintButton label="Print matrix" />
+
+          <Link
+            to={gamePicksPath(search, selectedWeekId)}
+            className="flex min-h-11 md:min-h-0 items-center rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-300 transition-colors hover:text-white print:hidden"
+          >
+            Game picks
+          </Link>
 
           {/* Order-by pills (issue #39). */}
           <div className="flex items-center gap-2 print:hidden">
@@ -267,9 +278,19 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
 
                   return (
                     <li key={game.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                      <span className="text-xs text-slate-500 whitespace-nowrap">
-                        {game.awayTeamId} <span className="text-slate-700">@</span> {game.homeTeamId}
-                      </span>
+                      {/* Before the deadline the screen it opens has nothing it may show. */}
+                      {isLocked ? (
+                        <Link
+                          to={gamePicksPath(search, selectedWeekId, game.id)}
+                          className="flex min-h-6 items-center text-xs text-slate-400 whitespace-nowrap underline decoration-slate-700 underline-offset-2"
+                        >
+                          {game.awayTeamId} @ {game.homeTeamId}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-slate-500 whitespace-nowrap">
+                          {game.awayTeamId} <span className="text-slate-700">@</span> {game.homeTeamId}
+                        </span>
+                      )}
 
                       {state.kind === 'none' && <span className="text-slate-700">-</span>}
                       {state.kind === 'hidden' && (
@@ -324,7 +345,19 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                           )}
                         </span>
                         <div className="font-bold text-slate-300 text-sm whitespace-nowrap print:text-xs print:whitespace-normal">
-                          {game.awayTeamId} <span className="text-slate-600">@</span> {game.homeTeamId}
+                          {isLocked ? (
+                            <Link
+                              to={gamePicksPath(search, selectedWeekId, game.id)}
+                              title="Who picked this game"
+                              className="underline decoration-slate-600 underline-offset-2 hover:text-white hover:decoration-white print:no-underline"
+                            >
+                              {game.awayTeamId} @ {game.homeTeamId}
+                            </Link>
+                          ) : (
+                            <>
+                              {game.awayTeamId} <span className="text-slate-600">@</span> {game.homeTeamId}
+                            </>
+                          )}
                         </div>
                       </div>
                     </th>

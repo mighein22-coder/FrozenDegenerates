@@ -156,6 +156,7 @@ serves `index.html` for any path, so deep links and refreshes work.
 | `/` | Dashboard |
 | `/picks` | Saturday Picks |
 | `/matrix?week=week-YYYY-MM-DD` | League Matrix, optionally on a given week |
+| `/matrix/game/:gameId?week=week-YYYY-MM-DD` | Game Picks: who took each side of a game. Without an id, the week's game list |
 | `/affinity` | Team Affinity |
 | `/standings?segment=1\|2\|3\|season` | Standings, optionally on a given scope |
 | `/history` | My History |

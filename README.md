@@ -27,6 +27,7 @@ standings — so a slow start doesn't put the rest of the year out of reach.
 **Saturday Picks** — the week's games, with team records and a live deadline countdown.
 **Standings** — league leaderboard, switchable between the three season segments and the full season.
 **League Matrix** — everyone's picks for a week, once the deadline has passed.
+**Game Picks** — who took each side of one game, opened from the Matrix.
 **My History** — your season, week by week.
 **Team Affinity** — each member's most-picked teams.
 **Admin** — manual score sync, week status, member directory (admins only).
